@@ -1,0 +1,27 @@
+language: php
+
+php:
+  - 7.2
+
+before_script:
+  - cp .env.travis .env
+  - composer self-update
+  - composer install --no-interaction
+  - composer require php-coveralls/php-coveralls
+  - php artisan key:generate
+  - php artisan migrate
+
+before_install:
+  - mysql -e 'CREATE DATABASE travis_test;'
+
+script:
+  - phpunit --coverage-clover build/logs/clover.xml
+
+services:
+  - mysql
+
+after_success:
+  - travis_retry php vendor/bin/php-coveralls -v
+
+notifications:
+  email: false

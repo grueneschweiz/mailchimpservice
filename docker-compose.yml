@@ -1,0 +1,69 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+    ports:
+      - '8000:80'
+    volumes:
+      - .:/var/www/html
+      - .docker/php.ini:/usr/local/etc/php/php.ini
+      - .docker/apache-vhost.conf:/etc/apache2/sites-available/custom-vhost.conf
+    container_name: wsapp
+    environment:
+        DB_HOST: mysql
+        DB_DATABASE: laravel
+        DB_USERNAME: laravel
+        DB_PASSWORD: laravel
+        # play with mailhog
+        MAIL_HOST: mailhog
+        MAIL_PORT: 1025
+        MAIL_USERNAME: null
+        MAIL_PASSWORD: null
+        MAIL_ENCRYPTION: null
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:5.6
+    ports:
+        - '3306:3306'
+    volumes:
+        - .docker/mysql/data:/var/lib/mysql
+    restart: always
+    environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: laravel
+        MYSQL_USER: laravel
+        MYSQL_PASSWORD: laravel
+    container_name: wsmysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - '8010:80'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      PMA_HOST: mysql
+      PMA_PORT: '3306'
+      PMA_USER: laravel
+      PMA_PASSWORD: laravel
+    container_name: wsphpmyadmin
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - '8020:8025'
+    container_name: wsmailhog
+
+  node:
+    image: node
+    working_dir: /home/node/app
+    volumes:
+      - ./:/home/node/app
+    ports:
+      - '8030:8081'
+    command: npm run watch
+    container_name: wsnode
