@@ -6,7 +6,7 @@ services:
     volumes:
       - .:/app
     command: composer install --ignore-platform-reqs
-    container_name: wscomposer_install
+    container_name: wscomposer_install_mailchimp
 
   node:
     image: node
@@ -14,6 +14,6 @@ services:
     volumes:
       - ./:/home/node/app
     ports:
-      - '8030:8081'
+      - '9030:9081'
     command: npm install
-    container_name: wsnode_install
+    container_name: wsnode_install_mailchimp

@@ -1,7 +1,7 @@
 {
-    "name": "laravel/laravel",
-    "description": "The Laravel Framework.",
-    "keywords": ["framework", "laravel"],
+    "name": "grueneschweiz/mailchimp",
+    "description": "The Mailchimp Service for the Swiss Greens.",
+    "keywords": ["framework", "laravel", "webling"],
     "license": "MIT",
     "type": "project",
     "require": {

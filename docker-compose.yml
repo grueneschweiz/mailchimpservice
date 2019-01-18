@@ -6,17 +6,17 @@ services:
       context: .
       dockerfile: .docker/Dockerfile
     ports:
-      - '8000:80'
+      - '9000:80'
     volumes:
       - .:/var/www/html
       - .docker/php.ini:/usr/local/etc/php/php.ini
       - .docker/apache-vhost.conf:/etc/apache2/sites-available/custom-vhost.conf
-    container_name: wsapp
+    container_name: wsapp_mailchimp
     environment:
         DB_HOST: mysql
-        DB_DATABASE: laravel
-        DB_USERNAME: laravel
-        DB_PASSWORD: laravel
+        DB_DATABASE: mailchimp
+        DB_USERNAME: mailchimp
+        DB_PASSWORD: mailchimp
         # play with mailhog
         MAIL_HOST: mailhog
         MAIL_PORT: 1025
@@ -29,7 +29,7 @@ services:
   mysql:
     image: mysql:5.6
     ports:
-        - '3306:3306'
+        - '4306:4306'
     volumes:
         - .docker/mysql/data:/var/lib/mysql
     restart: always
@@ -38,25 +38,25 @@ services:
         MYSQL_DATABASE: laravel
         MYSQL_USER: laravel
         MYSQL_PASSWORD: laravel
-    container_name: wsmysql
+    container_name: wsmysql_mailchimp
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     ports:
-      - '8010:80'
+      - '9010:80'
     environment:
       MYSQL_ROOT_PASSWORD: root
       PMA_HOST: mysql
-      PMA_PORT: '3306'
+      PMA_PORT: '4306'
       PMA_USER: laravel
       PMA_PASSWORD: laravel
-    container_name: wsphpmyadmin
+    container_name: wsphpmyadmin_mailchimp
 
   mailhog:
     image: mailhog/mailhog
     ports:
-      - '8020:8025'
-    container_name: wsmailhog
+      - '9020:9025'
+    container_name: wsmailhog_mailchimp
 
   node:
     image: node
@@ -64,6 +64,6 @@ services:
     volumes:
       - ./:/home/node/app
     ports:
-      - '8030:8081'
+      - '9030:9081'
     command: npm run watch
-    container_name: wsnode
+    container_name: wsnode_mailchimp
