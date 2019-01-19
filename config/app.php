@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Mailchimp Service'),
 
     /*
     |--------------------------------------------------------------------------
@@ -107,6 +107,19 @@ return [
     'key' => env('APP_KEY'),
 
     'cipher' => 'AES-256-CBC',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mailchimp Api Key
+    |--------------------------------------------------------------------------
+    |
+    | The key is used for identification by the Mailchimp API.
+    | Note that it should be set in the local .env file (see also .env.example file)
+    |
+    */
+
+    'mailchimp_api_key' => env('MAILCHIMP_API_KEY'),
+
 
     /*
     |--------------------------------------------------------------------------
