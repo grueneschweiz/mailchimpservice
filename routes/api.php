@@ -18,3 +18,14 @@ Route::get('lists', function (Request $request) {
     $controller = new RestController();
     return $controller->getLists();
 });
+
+
+Route::get('list/{list_id}', function (Request $request, $list_id) {
+    $controller = new RestController();
+    return $controller->getList($list_id);
+});
+
+Route::put('customer', function (Request $request) {
+    $controller = new RestController();
+    return $controller->put($request);
+});

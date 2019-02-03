@@ -24,7 +24,7 @@ it installs. `wsnode_install_mailchimp` and `wscomposer_install_mailchimp` shoul
 cp .env.example .env && php artisan key:generate` to generate the app secrets
 1. Execute `docker-compose up -d` to start up the stack. The first time you run
 this command, it will take a minute or two. Subsequent calls will be much faster.
-1. After a few seconds: Visit [localhost:8000](http://localhost:9000). If you
+1. After a few seconds: Visit [localhost:9000](http://localhost:9000). If you
 get a connection error, wait 30 seconds then try again. 
 
 ### Docker Cheat Sheet
@@ -39,6 +39,9 @@ execute)
 - Add dependency from npm: `docker-compose -f docker-compose.install.yml 
 run node npm --install DEPENDENCY` (You may want to use --save or --save-dev as
 well. Check out the [Docs](https://docs.npmjs.com/cli/install).)
+
+### Testing
+In the main folder run `php vendor/phpunit/phpunit/phpunit tests` to run the tests locally.
 
 ### Tooling
 #### Mailhog

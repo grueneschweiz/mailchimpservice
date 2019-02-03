@@ -47,4 +47,7 @@ private function __construct( string $api_key) {
     return $this->mailchimp_client->get('lists');
   }
 
+  public function getList($list_id) {
+    return $this->mailchimp_client->get('lists/' . $list_id);
+  }
 }
