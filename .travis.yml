@@ -1,14 +1,6 @@
 services:
   - docker
 
-before_script:
-  - cp .env.travis .env
-  - composer self-update
-  - composer install --no-interaction
-  - composer require php-coveralls/php-coveralls
-  - php artisan key:generate
-  - php artisan migrate
-
 install:
   - docker-compose -f docker-compose.install.yml up
   - docker-compose -f docker-compose.install.yml run composer cp .env.travis .env
