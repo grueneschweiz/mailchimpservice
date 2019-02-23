@@ -1,7 +1,5 @@
-language: php
-
-php:
-  - 7.2
+services:
+  - docker
 
 before_script:
   - cp .env.travis .env
@@ -11,17 +9,18 @@ before_script:
   - php artisan key:generate
   - php artisan migrate
 
-before_install:
-  - mysql -e 'CREATE DATABASE travis_test;'
+install:
+  - docker-compose -f docker-compose.install.yml up
+  - docker-compose -f docker-compose.install.yml run composer cp .env.travis .env
+  - docker-compose -f docker-compose.install.yml run composer php artisan key:generate
+  - docker-compose -f docker-compose.install.yml run composer composer require php-coveralls/php-coveralls
+  - docker-compose stop
 
 script:
-  - phpunit --coverage-clover build/logs/clover.xml
-
-services:
-  - mysql
+  - docker-compose run -e MAILCHIMP_API_KEY=${MAILCHIMP_API_KEY} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
 
 after_success:
-  - travis_retry php vendor/bin/php-coveralls -v
+  - travis_retry docker-compose run -e TRAVIS=${TRAVIS} -e TRAVIS_JOB_ID=${TRAVIS_JOB_ID} app php /var/www/html/vendor/bin/php-coveralls -v
 
 notifications:
   email: false
