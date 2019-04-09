@@ -3,10 +3,14 @@ auth:
     clientId: '***'
     clientSecret: '***'
     url: https://us18.api.mailchimp.com/3.0/
-  webling:
+  crm:
     clientId: '***'
     clientSecret: '***'
     url: 'xxx'
+
+dataOwner:
+  email: xxx@xxx.xx
+  name: Hugo
 
 mailchimpListId: 6f33e28fa3
 mailchimpInteresstCategoriesId: de75614d35
