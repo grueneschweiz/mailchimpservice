@@ -3,6 +3,7 @@
 namespace App\Synchronizer;
 
 
+use App\Synchronizer\Mapper\FieldMapFacade;
 use Tests\TestCase;
 
 class ConfigTest extends TestCase {
@@ -39,5 +40,13 @@ class ConfigTest extends TestCase {
 
 		$this->assertEquals( 'dataowner@example.com', $owner['email'] );
 		$this->assertEquals( 'dataowner', $owner['name'] );
+	}
+
+	public function testFieldMaps() {
+		$maps = $this->config->getFieldMaps();
+
+		foreach ( $maps as $map ) {
+			$this->assertInstanceOf( FieldMapFacade::class, $map );
+		}
 	}
 }

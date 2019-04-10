@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Synchronizer\Mapper;
+namespace App\Synchronizer\Mapper\FieldMaps;
 
 
 use App\Exceptions\ConfigException;
@@ -74,7 +74,7 @@ class FieldMapAutotag extends FieldMap {
 	 * @return array
 	 */
 	function getMailchimpDataArray() {
-		return [ $this->mailchimpTagNames ];
+		return $this->mailchimpTagNames;
 	}
 
 	/**

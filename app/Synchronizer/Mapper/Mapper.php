@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Synchronizer;
+namespace App\Synchronizer\Mapper;
 
 
 class Mapper {
@@ -66,7 +66,7 @@ class Mapper {
 
 				$data[ $parentKey ] = array_merge( $data[ $parentKey ], $map->getMailchimpDataArray() );
 			} else {
-				array_merge( $data, $map->getMailchimpDataArray() );
+				$data = array_merge( $data, $map->getMailchimpDataArray() );
 			}
 		}
 

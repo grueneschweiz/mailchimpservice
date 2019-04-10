@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\ConfigException;
+use App\Synchronizer\Mapper\FieldMapFacade;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 

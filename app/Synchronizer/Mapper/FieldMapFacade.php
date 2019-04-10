@@ -1,15 +1,15 @@
 <?php
 
 
-namespace App\Synchronizer;
+namespace App\Synchronizer\Mapper;
 
 
 use App\Exceptions\ConfigException;
-use App\Synchronizer\Mapper\FieldMapAutotag;
-use App\Synchronizer\Mapper\FieldMapEmail;
-use App\Synchronizer\Mapper\FieldMapGroup;
-use App\Synchronizer\Mapper\FieldMapMerge;
-use App\Synchronizer\Mapper\FieldMapTag;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapAutotag;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapEmail;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapMerge;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapTag;
 
 class FieldMapFacade {
 	const TYPE_MERGE = 'merge';

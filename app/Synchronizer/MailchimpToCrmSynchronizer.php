@@ -14,11 +14,11 @@ class MailchimpToCrmSynchronizer {
 	 *
 	 * @see https://developer.mailchimp.com/documentation/mailchimp/guides/about-webhooks/
 	 */
-	const MC_EMAIL_UPDATE = 'upemail';
-	const MC_CLEANED_EMAIL = 'cleaned';
-	const MC_SUBSCRIBE = 'subscribe';
-	const MC_UNSUBSCRIBE = 'unsubscribe';
-	const MC_PROFILE_UPDATE = 'profile';
+	private const MC_EMAIL_UPDATE = 'upemail';
+	private const MC_CLEANED_EMAIL = 'cleaned';
+	private const MC_SUBSCRIBE = 'subscribe';
+	private const MC_UNSUBSCRIBE = 'unsubscribe';
+	private const MC_PROFILE_UPDATE = 'profile';
 
 	/**
 	 * @var Config
@@ -56,6 +56,7 @@ class MailchimpToCrmSynchronizer {
 	 * @param array $mcData
 	 *
 	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseMailchimpDataException
 	 */
 	public function syncSingle( array $mcData ) {
 		$mapper  = new Mapper( $this->config->getFieldMaps() );

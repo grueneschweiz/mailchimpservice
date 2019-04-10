@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Synchronizer\Mapper;
+namespace App\Synchronizer\Mapper\FieldMaps;
 
 
 use App\Exceptions\ConfigException;
