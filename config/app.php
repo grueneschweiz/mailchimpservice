@@ -110,15 +110,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Mailchimp Api Key
+    | Path to Config Files
     |--------------------------------------------------------------------------
     |
-    | The key is used for identification by the Mailchimp API.
+    | Provide the relative path to the config files. Defaults to 'config'.
     | Note that it should be set in the local .env file (see also .env.example file)
     |
     */
 
-    'mailchimp_api_key' => env('MAILCHIMP_API_KEY'),
+    'config_base_path' => env('CONFIG_BASE_PATH', 'config'),
 
 
     /*

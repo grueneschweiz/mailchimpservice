@@ -12,8 +12,8 @@ class Config {
 
 	private $fields;
 	private $auth;
-	private $mcListId;
-	private $mcInteresstCatId;
+	private $dataOwner;
+	private $mailchimp;
 
 	/**
 	 * Config constructor.
@@ -43,13 +43,108 @@ class Config {
 
 		try {
 			$config = Yaml::parseFile( $configFilePath );
-
-			$this->fields           = $config['fields'];
-			$this->auth             = $config['auth'];
-			$this->mcListId         = $config['mailchimpListId'];
-			$this->mcInteresstCatId = $config['mailchimpInteresstCategoriesId'];
 		} catch ( ParseException $e ) {
 			throw new ConfigException( "YAML parse error: {$e->getMessage()}" );
 		}
+
+		// prevalidate confic
+		if ( $config['auth'] ) {
+			$this->auth = $config['auth'];
+		} else {
+			throw new ConfigException( "Missing 'auth' section." );
+		}
+
+		if ( $config['dataOwner'] ) {
+			$this->dataOwner = $config['dataOwner'];
+		} else {
+			throw new ConfigException( "Missing 'field' section." );
+		}
+
+		if ( $config['mailchimp'] ) {
+			$this->mailchimp = $config['mailchimp'];
+		} else {
+			throw new ConfigException( "Missing 'mailchimp' section." );
+		}
+
+		if ( $config['fields'] ) {
+			$this->fields = $config['fields'];
+		} else {
+			throw new ConfigException( "Missing 'field' section." );
+		}
+	}
+
+	/**
+	 * Return array with crm credentials
+	 *
+	 * @return array {clientId: string, clientSecret: string, url: string}
+	 *
+	 * @throws ConfigException
+	 */
+	public function getCrmCredentials(): array {
+		if ( empty( $this->auth['crm'] )
+		     || empty( $this->auth['crm']['clientId'] )
+		     || empty( $this->auth['crm']['clientSecret'] )
+		     || empty( $this->auth['crm']['url'] )
+		) {
+			throw new ConfigException( "Missing CRM credentials." );
+		}
+
+		return $this->auth['crm'];
+	}
+
+	/**
+	 * Return array with mailchimp credentials
+	 *
+	 * @return array {apikey: string, url: string}
+	 *
+	 * @throws ConfigException
+	 */
+	public function getMailchimpCredentials(): array {
+		if ( empty( $this->auth['mailchimp'] )
+		     || empty( $this->auth['mailchimp']['apikey'] )
+		     || empty( $this->auth['mailchimp']['url'] )
+		) {
+			throw new ConfigException( "Missing Mailchimp credentials." );
+		}
+
+		return $this->auth['mailchimp'];
+	}
+
+	/**
+	 * Return array with name and email of data owner
+	 *
+	 * @return array {email: string, name: string,}
+	 *
+	 * @throws ConfigException
+	 */
+	public function getDataOwner(): array {
+		if ( empty( $this->dataOwner )
+		     || empty( $this->dataOwner['email'] )
+		     || empty( $this->dataOwner['name'] )
+		) {
+			throw new ConfigException( "Missing CRM credentials." );
+		}
+
+		return $this->dataOwner;
+	}
+
+	/**
+	 * Return array with the field maps
+	 *
+	 * @return FieldMapFacade[]
+	 *
+	 * @throws ConfigException
+	 */
+	public function getFieldMaps(): array {
+		if ( ! is_array( $this->fields ) ) {
+			throw new ConfigException( "Fields configuration must be an array." );
+		}
+
+		$fields = [];
+		foreach ( $this->fields as $config ) {
+			$fields[] = new FieldMapFacade( $config );
+		}
+
+		return $fields;
 	}
 }

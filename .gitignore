@@ -20,3 +20,5 @@ Thumbs.db
 /.vagrant
 .env
 .docker/mysql
+/config/*.yml
+!/config/example.com.yml

@@ -40,6 +40,8 @@ class MailchimpToCrmSynchronizer {
 	 *
 	 * @param Config $config
 	 * @param int $userId
+	 *
+	 * @throws \App\Exceptions\ConfigException
 	 */
 	public function __construct( Config $config, int $userId ) {
 		$this->config = $config;
@@ -52,9 +54,11 @@ class MailchimpToCrmSynchronizer {
 	 * Sync single record from mailchimp to the crm. Usually called via mailchimp webhook.
 	 *
 	 * @param array $mcData
+	 *
+	 * @throws \App\Exceptions\ConfigException
 	 */
 	public function syncSingle( array $mcData ) {
-		$mapper  = new Mapper( $this->config );
+		$mapper  = new Mapper( $this->config->getFieldMaps() );
 		$crmData = $mapper->mailchimpToCrm( $mcData );
 
 		$recordId = $this->calculateMailchimpsContactId( $mcData['data']['email'] );
@@ -69,7 +73,7 @@ class MailchimpToCrmSynchronizer {
 			case self::MC_SUBSCRIBE:
 				// send mail to dataOwner, that he should
 				// add the subscriber to webling not mailchimp
-				self::sendMailSubscribeOnlyInWebling( $this->config->getDataOwner(), $crmData );
+				$this->sendMailSubscribeOnlyInWebling( $this->config->getDataOwner(), $crmData );
 
 				return;
 
@@ -77,7 +81,7 @@ class MailchimpToCrmSynchronizer {
 				// get contact from crm
 				// set all subscriptions, that are configured in this config to NO
 				$crmData = $this->crmClient->get( $crmData['id'] );
-				$crmData = $mapper->unsubscribeAll( $crmData );
+				$crmData = $this->unsubscribeAll( $crmData );
 				break;
 
 			case self::MC_CLEANED_EMAIL:
@@ -99,7 +103,7 @@ class MailchimpToCrmSynchronizer {
 			case self::MC_EMAIL_UPDATE:
 				// update email1
 				$crmData = $this->crmClient->get( $crmData['id'] );
-				$crmData = $mapper->updateEmail( $mcData, $crmData );
+				$crmData = $this->updateEmail( $mcData, $crmData );
 				break;
 
 			default:

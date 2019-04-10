@@ -1,0 +1,95 @@
+auth:
+  mailchimp:
+    apikey: apikey
+    url: apiurl
+  crm:
+    clientId: 'crmclientid'
+    clientSecret: 'crmclientsecret'
+    url: 'crmclienturl'
+
+dataOwner:
+  email: dataowner@example.com
+  name: dataowner
+
+mailchimp:
+  - listId: 6f33e28fa3
+  - interesstCategoriesId: de75614d35
+
+fields:
+  - crmKey: email1
+    type: email
+    sync: both
+  - crmKey: firstName
+    mailchimpKey: FNAME
+    type: merge
+    default: ''
+    sync: toMailchimp
+  - crmKey: lastName
+    mailchimpKey: LNAME
+    type: merge
+    default: ''
+    sync: toMailchimp
+  - crmKey: gender
+    mailchimpKey: GENDER
+    type: merge
+    default: n
+    sync: toMailchimp
+  - crmKey: newsletterCountryD
+    mailchimpCategoryId: 55f795def4
+    type: group
+    trueCondition: yes
+    falseCondition: no
+    sync: both
+  - crmKey: newsletterCountryF
+    mailchimpCategoryId: 1851be732e
+    type: group
+    trueCondition: yes
+    falseCondition: no
+    sync: both
+  - crmKey: pressReleaseCountryD
+    mailchimpCategoryId: 294df36247
+    type: group
+    trueCondition: yes
+    falseCondition: no
+    sync: both
+  - crmKey: pressReleaseCountryF
+    mailchimpCategoryId: 633e3c8dd7
+    type: group
+    trueCondition: yes
+    falseCondition: no
+    sync: both
+  - crmKey: memberStatusCountry
+    mailchimpTagName: member
+    type: tag
+    conditions:
+      - member
+      - unconfirmed
+    sync: toMailchimp
+  - crmKey: interests
+    type: autotag
+    sync: toMailchimp
+  - crmKey: donorCountry
+    mailchimpTagName: donor
+    type: tag
+    conditions:
+      - donor
+      - sponsor
+      - majorDonor
+    sync: toMailchimp
+  - crmKey: notesCountry
+    mailchimpKey: NOTES
+    type: merge
+    sync: toMailchimp
+  - crmKey: group
+    type: autotag
+    sync: toMailchimp
+  - crmKey: recordCategory
+    mailchimpTagName: journalist
+    type: tag
+    conditions:
+      - media
+    sync: toMailchimp
+  - crmKey: id
+    mailchimpKey: WEBLINGID
+    type: merge
+    sync: toMailchimp

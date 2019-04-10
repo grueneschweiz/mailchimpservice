@@ -84,12 +84,12 @@ class CrmToMailchimpSynchronizer {
 		}
 
 		// only process the relevant datasets
-		$filter          = new Filter( $this->config->getFields() );
+		$filter          = new Filter( $this->config->getFieldMaps() );
 		$relevantRecords = $filter->filter( $crmData );
 
 		// map crm data to mailchimp data and store them in mailchimp
 		// don't use mailchimps batch operations, because they are async
-		$mapper          = new Mapper( $this->config->getFields() );
+		$mapper          = new Mapper( $this->config->getFieldMaps() );
 		$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials() );
 		foreach ( $relevantRecords as $crmRecord ) {
 			$mcRecord = $mapper->crmToMailchimp( $crmRecord );
