@@ -49,4 +49,8 @@ class ConfigTest extends TestCase {
 			$this->assertInstanceOf( FieldMapFacade::class, $map );
 		}
 	}
+
+	public function testSyncAll() {
+		$this->assertFalse( $this->config->getSyncAll() );
+	}
 }

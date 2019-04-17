@@ -15,6 +15,7 @@ class Config {
 	private $auth;
 	private $dataOwner;
 	private $mailchimp;
+	private $syncAll;
 
 	/**
 	 * Config constructor.
@@ -71,6 +72,12 @@ class Config {
 			$this->fields = $config['fields'];
 		} else {
 			throw new ConfigException( "Missing 'field' section." );
+		}
+
+		if ( $config['syncAll'] ) {
+			$this->syncAll = $config['syncAll'];
+		} else {
+			$this->syncAll = false;
 		}
 	}
 
@@ -147,5 +154,15 @@ class Config {
 		}
 
 		return $fields;
+	}
+
+	/**
+	 * Return bool that indicates if all records should be synced even if they dont have
+	 * relevant subscriptions
+	 *
+	 * @return bool
+	 */
+	public function getSyncAll(): bool {
+		return filter_var( $this->syncAll, FILTER_VALIDATE_BOOLEAN );
 	}
 }

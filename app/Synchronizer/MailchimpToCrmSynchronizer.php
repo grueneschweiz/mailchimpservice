@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Mail\WrongSubscription;
+use App\Synchronizer\Mapper\Mapper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 

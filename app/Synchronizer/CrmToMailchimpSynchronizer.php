@@ -4,11 +4,10 @@
 namespace App\Synchronizer;
 
 
-use App\Mail\WrongSubscription;
 use App\Revision;
+use App\Synchronizer\Mapper\Mapper;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class CrmToMailchimpSynchronizer {
 	/**
@@ -31,6 +30,8 @@ class CrmToMailchimpSynchronizer {
 	 *
 	 * @param Config $config
 	 * @param int $userId
+	 *
+	 * @throws \App\Exceptions\ConfigException
 	 */
 	public function __construct( Config $config, int $userId ) {
 		$this->config = $config;
@@ -52,6 +53,9 @@ class CrmToMailchimpSynchronizer {
 	 *
 	 * @param int $limit number of records to sync at a time
 	 * @param int $offset number of records to skip
+	 *
+	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseCrmDataException
 	 */
 	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
 		// get revision id of last successful sync (or -1 if first run)
@@ -84,7 +88,7 @@ class CrmToMailchimpSynchronizer {
 		}
 
 		// only process the relevant datasets
-		$filter          = new Filter( $this->config->getFieldMaps() );
+		$filter          = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
 		$relevantRecords = $filter->filter( $crmData );
 
 		// map crm data to mailchimp data and store them in mailchimp

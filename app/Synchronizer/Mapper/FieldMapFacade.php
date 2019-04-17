@@ -121,4 +121,30 @@ class FieldMapFacade {
 		return $this->field->canSyncToMailchimp();
 	}
 
+	/**
+	 * Indicates if the current field is an email field
+	 *
+	 * @return bool
+	 */
+	public function isEmail() {
+		return $this->field instanceof FieldMapEmail;
+	}
+
+	/**
+	 * Indicates if the current field is a group field
+	 *
+	 * @return bool
+	 */
+	public function isGroup() {
+		return $this->field instanceof FieldMapGroup;
+	}
+
+	/**
+	 * Return the crm key of the current field
+	 *
+	 * @return string
+	 */
+	public function getCrmKey(): string {
+		return $this->field->getCrmKey();
+	}
 }

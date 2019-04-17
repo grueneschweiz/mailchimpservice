@@ -52,6 +52,13 @@ abstract class FieldMap {
 	}
 
 	/**
+	 * @return string
+	 */
+	public function getCrmKey() {
+		return $this->crmKey;
+	}
+
+	/**
 	 * Get key value pair ready for storing in the crm
 	 *
 	 * @return array
