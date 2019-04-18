@@ -73,12 +73,6 @@ class Config {
 		} else {
 			throw new ConfigException( "Missing 'field' section." );
 		}
-
-		if ( $config['syncAll'] ) {
-			$this->syncAll = $config['syncAll'];
-		} else {
-			$this->syncAll = false;
-		}
 	}
 
 	/**
@@ -163,6 +157,10 @@ class Config {
 	 * @return bool
 	 */
 	public function getSyncAll(): bool {
-		return filter_var( $this->syncAll, FILTER_VALIDATE_BOOLEAN );
+		if ( array_key_exists( 'syncAll', $this->mailchimp ) ) {
+			return filter_var( $this->mailchimp['syncAll'], FILTER_VALIDATE_BOOLEAN );
+		}
+
+		return false;
 	}
 }
