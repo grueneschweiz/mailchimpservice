@@ -6,48 +6,98 @@ use \DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
 
-  /**
- * The Mailchimp client object
- *
- * @see https://github.com/drewm/mailchimp-api
- *
- * @var MailChimp
- */
-private $mailchimp_client;
+	/**
+	 * The Mailchimp client object
+	 *
+	 * @see https://github.com/drewm/mailchimp-api
+	 *
+	 * @var MailChimp
+	 */
+	private $client;
 
-/**
- * The MailChimp api key
- *
- * @var string
- */
-private $api_key;
+	/**
+	 * The MailChimp api key
+	 *
+	 * @var string
+	 */
+	private $apiKey;
 
-/**
- * @param string $api_key MailChimp api key
- */
-private function __construct( string $api_key) {
-  $this->api_key = $api_key;
-  $this->mailchimp_client = new MailChimp($api_key);
-}
+	/**
+	 * The list we're working with
+	 *
+	 * @var string
+	 */
+	private $listId;
 
-  /**
-  * Creates a MailChimpWrapper to deal with Member entities.
-  *
-  * @param string [optional] the mailchimp key
-  * @return MailChimpClient
-  */
-  public static function getClient(String $api_key = null) {
-    if (!$api_key) {
-      $api_key = config('app.mailchimp_api_key');// default on server
-    }
-    return new MailChimpClient($api_key);
-  }
+	/**
+	 * @param string $api_key MailChimp api key
+	 *
+	 * @throws \Exception
+	 */
+	public function __construct( string $api_key, string $listId ) {
+		$this->apiKey = $api_key;
+		$this->listId = $listId;
+		$this->client = new MailChimp( $api_key );
+	}
 
-  public function getLists() {
-    return $this->mailchimp_client->get('lists');
-  }
+	/**
+	 * Get subscriber by email
+	 *
+	 * @param string $email
+	 *
+	 * @return array|false
+	 * @throws \Exception
+	 */
+	public function getSubscriber( string $email ) {
+		$id = self::calculateSubscriberId( $email );
 
-  public function getList($list_id) {
-    return $this->mailchimp_client->get('lists/' . $list_id);
-  }
+		$get = $this->client->get( "lists/{$this->listId}/members/$id" );
+
+		if ( ! $get ) {
+			throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		return $get;
+	}
+
+	/**
+	 * Upsert subscriber
+	 *
+	 * @param array $mcData
+	 *
+	 * @return array|false
+	 * @throws \Exception
+	 * @throws \InvalidArgumentException
+	 */
+	public function putSubscriber( array $mcData ) {
+		if ( empty( $mcData['email_address'] ) ) {
+			throw new \InvalidArgumentException( 'Missing email_address.' );
+		}
+
+		$id = self::calculateSubscriberId( $mcData['email_address'] );
+
+		$put = $this->client->put( "lists/{$this->listId}/members/$id", $mcData );
+
+		if ( ! $put ) {
+			throw new \Exception( "Put request to Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		return $put;
+	}
+
+	/**
+	 * Calculate the id of the contact in mailchimp
+	 *
+	 * @see https://developer.mailchimp.com/documentation/mailchimp/guides/manage-subscribers-with-the-mailchimp-api/
+	 *
+	 * @param string $email
+	 *
+	 * @return string MD5 hash of the lowercase email address
+	 */
+	public static function calculateSubscriberId( string $email ) {
+		$email = trim( $email );
+		$email = strtolower( $email );
+
+		return md5( $email );
+	}
 }

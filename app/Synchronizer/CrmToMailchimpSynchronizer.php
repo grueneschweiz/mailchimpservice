@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Http\Controllers\RestApi\CrmClient;
+use App\Http\Controllers\RestApi\MailChimpClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;
@@ -61,6 +62,7 @@ class CrmToMailchimpSynchronizer {
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 * @throws RequestException
+	 * @throws \Exception
 	 */
 	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
 		// get revision id of last successful sync (or -1 if first run)
@@ -100,10 +102,11 @@ class CrmToMailchimpSynchronizer {
 		// map crm data to mailchimp data and store them in mailchimp
 		// don't use mailchimps batch operations, because they are async
 		$mapper          = new Mapper( $this->config->getFieldMaps() );
-		$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials() );
+		$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
+
 		foreach ( $relevantRecords as $crmRecord ) {
 			$mcRecord = $mapper->crmToMailchimp( $crmRecord );
-			$mailchimpClient->put( $mcRecord ); // let if fail hard, for the moment
+			$mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
 		}
 
 		// todo:

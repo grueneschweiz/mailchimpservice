@@ -1,7 +1,6 @@
 auth:
   mailchimp:
     apikey: apikey
-    url: apiurl
   crm:
     clientId: 'crmclientid'
     clientSecret: 'crmclientsecret'

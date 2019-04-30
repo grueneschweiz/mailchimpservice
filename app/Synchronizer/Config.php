@@ -48,7 +48,7 @@ class Config {
 			throw new ConfigException( "YAML parse error: {$e->getMessage()}" );
 		}
 
-		// prevalidate confic
+		// prevalidate config
 		if ( $config['auth'] ) {
 			$this->auth = $config['auth'];
 		} else {
@@ -103,7 +103,6 @@ class Config {
 	public function getMailchimpCredentials(): array {
 		if ( empty( $this->auth['mailchimp'] )
 		     || empty( $this->auth['mailchimp']['apikey'] )
-		     || empty( $this->auth['mailchimp']['url'] )
 		) {
 			throw new ConfigException( "Missing Mailchimp credentials." );
 		}
@@ -161,5 +160,20 @@ class Config {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Return the default list id in Mailchimp
+	 *
+	 * @return string the list id
+	 *
+	 * @throws ConfigException
+	 */
+	public function getMailchimpListId(): string {
+		if ( empty( $this->mailchimp['listId'] ) ) {
+			throw new ConfigException( "Missing mailchimp list id." );
+		}
+
+		return $this->mailchimp['listId'];
 	}
 }

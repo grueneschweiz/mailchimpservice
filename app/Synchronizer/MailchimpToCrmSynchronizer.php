@@ -6,6 +6,7 @@ namespace App\Synchronizer;
 
 use App\Exceptions\ConfigException;
 use App\Http\Controllers\RestApi\CrmClient;
+use App\Http\Controllers\RestApi\MailChimpClient;
 use App\Mail\WrongSubscription;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;
@@ -66,12 +67,13 @@ class MailchimpToCrmSynchronizer {
 	 * @throws \App\Exceptions\ParseMailchimpDataException
 	 * @throws RequestException
 	 * @throws \App\Exceptions\ParseCrmDataException
+	 * @throws \Exception
 	 */
 	public function syncSingle( array $mcData ) {
 		$mapper  = new Mapper( $this->config->getFieldMaps() );
 		$crmData = $mapper->mailchimpToCrm( $mcData );
 
-		$recordId = $this->calculateMailchimpsContactId( $mcData['data']['email'] );
+		$recordId = MailChimpClient::calculateSubscriberId( $mcData['data']['email'] );
 
 		Log::debug( sprintf(
 			"Sync single record from Mailchimp to CRM\nRecord id: %s\nWebhook event: %s",
@@ -107,8 +109,8 @@ class MailchimpToCrmSynchronizer {
 			case self::MC_PROFILE_UPDATE:
 				// get contact from mailchimp (so we have the interessts (groups) in a usable format)
 				// update email1, subscriptions
-				$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials() );
-				$mcData          = $mailchimpClient->get( $recordId );
+				$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
+				$mcData          = $mailchimpClient->getSubscriber( $mcData['data']['email'] );
 				$crmData         = $mapper->mailchimpToCrm( $mcData );
 				break;
 
@@ -132,22 +134,6 @@ class MailchimpToCrmSynchronizer {
 			"Sync successful (record id: %d)",
 			$recordId
 		) );
-	}
-
-	/**
-	 * Calculate the id of the contact in mailchimp
-	 *
-	 * @see https://developer.mailchimp.com/documentation/mailchimp/guides/manage-subscribers-with-the-mailchimp-api/
-	 *
-	 * @param string $email
-	 *
-	 * @return string MD5 hash of the lowercase email address
-	 */
-	private function calculateMailchimpsContactId( string $email ) {
-		$email = trim( $email );
-		$email = strtolower( $email );
-
-		return md5( $email );
 	}
 
 	/**
