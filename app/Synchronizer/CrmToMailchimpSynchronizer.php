@@ -19,9 +19,9 @@ class CrmToMailchimpSynchronizer {
 	private $config;
 
 	/**
-	 * @var int
+	 * @var string
 	 */
-	private $userId;
+	private $configName;
 
 	/**
 	 * @var CrmClient
@@ -31,16 +31,15 @@ class CrmToMailchimpSynchronizer {
 	/**
 	 * Synchronizer constructor.
 	 *
-	 * @param Config $config
-	 * @param int $userId
+	 * @param string $configFileName file name of the config file
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 */
-	public function __construct( Config $config, int $userId ) {
-		$this->config = $config;
-		$this->userId = $userId;
+	public function __construct( string $configFileName ) {
+		$this->config     = new Config( $configFileName );
+		$this->configName = $configFileName;
 
-		$crmCred = $config->getCrmCredentials();
+		$crmCred = $this->config->getCrmCredentials();
 
 		$this->crmClient = new CrmClient( $crmCred['clientId'], $crmCred['clientSecret'], $crmCred['url'] );
 	}
@@ -49,8 +48,7 @@ class CrmToMailchimpSynchronizer {
 	 * Get latest changes from crm and push them into mailchimp.
 	 *
 	 * To surpass timeouts, this method only gets up to $limit records
-	 * at a time (starting at $offset). It then restarts itself with a
-	 * new request (reset hard server timeout limits). This is repeated
+	 * at a time (starting at $offset). This is repeated
 	 * until there is no new data any more.
 	 *
 	 * To keep track of the changes already synced, the revision id of
@@ -70,8 +68,8 @@ class CrmToMailchimpSynchronizer {
 
 		if ( 0 === $offset ) {
 			Log::debug( sprintf(
-				"Starting to sync all changes from crm into mailchimp\nUser id: %d\nId of last successfully synced revision: %d",
-				$this->userId,
+				"Starting to sync all changes from crm into mailchimp\nConfig: %s\nId of last successfully synced revision: %d",
+				$this->configName,
 				$revId
 			) );
 
@@ -79,47 +77,58 @@ class CrmToMailchimpSynchronizer {
 			$this->openNewRevision();
 		}
 
-		// get changed members
-		$get     = $this->crmClient->get( "member/changed/$revId/$offset/$limit" );
-		$crmData = json_decode( (string) $get->getBody() ); // todo: adapt webling wrapper
+		while ( true ) {
+			// get changed members
+			$get     = $this->crmClient->get( "member/changed/$revId/$offset/$limit" );
+			$crmData = json_decode( (string) $get->getBody() ); // todo: adapt webling wrapper
 
-		// base case: everything worked well. update revision id
-		if ( empty( $crmData ) ) {
-			$this->closeOpenRevision();
+			// base case: everything worked well. update revision id
+			if ( empty( $crmData ) ) {
+				$this->closeOpenRevision();
+
+				Log::debug( sprintf(
+					"Sync for config %s successful.",
+					$this->configName
+				) );
+
+				return;
+			}
+
+			// delete the once that were deleted in the crm
+			foreach ( $crmData as $crmId => $record ) {
+				if ( null === $record ) {
+					// todo: delete it
+					// this is not trivial, since mailchimp doesn't
+					// support searching members by merge tags 🤦‍
+
+					unset( $crmData[ $crmId ] );
+				}
+			}
+
+			// only process the relevant datasets
+			$filter          = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
+			$relevantRecords = $filter->filter( $crmData );
+
+			// map crm data to mailchimp data and store them in mailchimp
+			// don't use mailchimps batch operations, because they are async
+			$mapper          = new Mapper( $this->config->getFieldMaps() );
+			$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
+
+			foreach ( $relevantRecords as $crmRecord ) {
+				$mcRecord = $mapper->crmToMailchimp( $crmRecord );
+				$mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
+			}
 
 			Log::debug( sprintf(
-				"Sync for user %d successful.",
-				$this->userId
+				"Sync of records %d up to %d for config %s successful. Requesting next batch.",
+				$offset,
+				$offset + $limit,
+				$this->configName
 			) );
 
-			return;
+			// get next batch
+			$offset += $limit;
 		}
-
-		// only process the relevant datasets
-		$filter          = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
-		$relevantRecords = $filter->filter( $crmData );
-
-		// map crm data to mailchimp data and store them in mailchimp
-		// don't use mailchimps batch operations, because they are async
-		$mapper          = new Mapper( $this->config->getFieldMaps() );
-		$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
-
-		foreach ( $relevantRecords as $crmRecord ) {
-			$mcRecord = $mapper->crmToMailchimp( $crmRecord );
-			$mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
-		}
-
-		// todo:
-		// pass back to controller which should issue
-		// a new http request with offset +=100.
-		// this is to work around execution limits
-
-		Log::debug( sprintf(
-			"Sync of records %d upto %d for user %d successful. Requesting next batch.",
-			$offset,
-			$offset + $limit,
-			$this->userId
-		) );
 	}
 
 	/**
@@ -141,7 +150,7 @@ class CrmToMailchimpSynchronizer {
 
 		// add current revision
 		$latestRev                 = new Revision();
-		$latestRev->userId         = $this->userId;
+		$latestRev->userId         = $this->configName;
 		$latestRev->revisionId     = $latestRevId;
 		$latestRev->syncSuccessful = false;
 		$latestRev->save();
@@ -149,7 +158,7 @@ class CrmToMailchimpSynchronizer {
 		Log::debug( sprintf(
 			'Opening revision %d for user %d',
 			$latestRev,
-			$this->userId
+			$this->configName
 		) );
 	}
 
@@ -157,7 +166,7 @@ class CrmToMailchimpSynchronizer {
 	 * Delete all open revisions and log it
 	 */
 	private function deleteOpenRevisions() {
-		$openRevisions = Revision::where( 'user_id', $this->userId )
+		$openRevisions = Revision::where( 'user_id', $this->configName )
 		                         ->where( 'sync_successful', false );
 
 		$count = $openRevisions->count();
@@ -168,7 +177,7 @@ class CrmToMailchimpSynchronizer {
 			Log::notice( sprintf(
 				'%d open (failed) revisions for user %d were deleted.',
 				$count,
-				$this->userId
+				$this->configName
 			) );
 		}
 	}
@@ -177,7 +186,7 @@ class CrmToMailchimpSynchronizer {
 	 * Mark the open revision as successfully synced
 	 */
 	private function closeOpenRevision() {
-		$revision = Revision::where( 'user_id', $this->userId )
+		$revision = Revision::where( 'user_id', $this->configName )
 		                    ->where( 'sync_successful', false )
 		                    ->latest()
 		                    ->firstOrFail(); // else die hard
@@ -188,7 +197,7 @@ class CrmToMailchimpSynchronizer {
 		Log::debug( sprintf(
 			'Closing revision %d for user %d',
 			$revision->revisionId,
-			$this->userId
+			$this->configName
 		) );
 	}
 
@@ -199,7 +208,7 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function getLatestSuccessfullSyncRevisionId(): int {
 		try {
-			return Revision::where( 'user_id', $this->userId )
+			return Revision::where( 'user_id', $this->configName )
 			               ->where( 'sync_successful', true )
 			               ->latest()
 			               ->firstOrFail()

@@ -32,9 +32,9 @@ class MailchimpToCrmSynchronizer {
 	private $config;
 
 	/**
-	 * @var int
+	 * @var string
 	 */
-	private $userId;
+	private $configName;
 
 	/**
 	 * @var CrmClient
@@ -49,11 +49,11 @@ class MailchimpToCrmSynchronizer {
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 */
-	public function __construct( Config $config, int $userId ) {
-		$this->config = $config;
-		$this->userId = $userId;
+	public function __construct( string $configFileName ) {
+		$this->config     = new Config( $configFileName );
+		$this->configName = $configFileName;
 
-		$crmCred = $config->getCrmCredentials();
+		$crmCred = $this->config->getCrmCredentials();
 
 		$this->crmClient = new CrmClient( $crmCred['clientId'], $crmCred['clientSecret'], $crmCred['url'] );
 	}
