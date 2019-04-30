@@ -176,4 +176,20 @@ class Config {
 
 		return $this->mailchimp['listId'];
 	}
+
+	/**
+	 * The the mailchimp merge field key that corresponds to the crm's id
+	 *
+	 * @return string
+	 * @throws ConfigException
+	 */
+	public function getMailchimpKeyOfCrmId(): string {
+		foreach ( $this->getFieldMaps() as $map ) {
+			if ( 'id' === $map->getCrmKey() ) {
+				return array_key_first( $map->getMailchimpDataArray() );
+			}
+		}
+
+		throw new ConfigException( 'Missing "id" field.' );
+	}
 }

@@ -77,10 +77,16 @@ class CrmToMailchimpSynchronizer {
 			$this->openNewRevision();
 		}
 
+		$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
+		$filter          = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
+		$mapper          = new Mapper( $this->config->getFieldMaps() );
+
+		$mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
+
 		while ( true ) {
 			// get changed members
-			$get     = $this->crmClient->get( "member/changed/$revId/$offset/$limit" );
-			$crmData = json_decode( (string) $get->getBody() ); // todo: adapt webling wrapper
+			$get     = $this->crmClient->get( "member/changed/$revId/$limit/$offset" );
+			$crmData = json_decode( (string) $get->getBody() );
 
 			// base case: everything worked well. update revision id
 			if ( empty( $crmData ) ) {
@@ -97,23 +103,21 @@ class CrmToMailchimpSynchronizer {
 			// delete the once that were deleted in the crm
 			foreach ( $crmData as $crmId => $record ) {
 				if ( null === $record ) {
-					// todo: delete it
-					// this is not trivial, since mailchimp doesn't
-					// support searching members by merge tags 🤦‍
+					$email = $mailchimpClient->getSubscriberEmailByMergeField( (string) $crmId, $mcCrmIdFieldKey );
+
+					if ( $email ) {
+						$mailchimpClient->deleteSubscriber( $email );
+					}
 
 					unset( $crmData[ $crmId ] );
 				}
 			}
 
 			// only process the relevant datasets
-			$filter          = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
 			$relevantRecords = $filter->filter( $crmData );
 
 			// map crm data to mailchimp data and store them in mailchimp
 			// don't use mailchimps batch operations, because they are async
-			$mapper          = new Mapper( $this->config->getFieldMaps() );
-			$mailchimpClient = new MailChimpClient( $this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId() );
-
 			foreach ( $relevantRecords as $crmRecord ) {
 				$mcRecord = $mapper->crmToMailchimp( $crmRecord );
 				$mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\RestApi;
 use \DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
+	private const MC_GET_LIMIT = 100;
 
 	/**
 	 * The Mailchimp client object
@@ -61,6 +62,42 @@ class MailChimpClient {
 	}
 
 	/**
+	 * Return the email address of the first subscriber that has the given value in the given merge tag field.
+	 *
+	 * Note: This function is really costly, since mailchimp's api doesn't allow to search by merge tag by april 2019.
+	 *
+	 * @param string $value
+	 * @param string $mergeFieldKey
+	 *
+	 * @return false|string email address on match else false
+	 *
+	 * @throws \Exception
+	 */
+	public function getSubscriberEmailByMergeField( string $value, string $mergeFieldKey ) {
+		$offset = 0;
+
+		// yes by april 2019, there is no better way to do that
+		// because mailchimp doesn't let us search by merge tag
+		while ( true ) {
+			$get = $this->client->get( "lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset" );
+
+			if ( ! $get ) {
+				throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
+			}
+
+			if ( 0 === count( $get['members'] ) ) {
+				return false;
+			}
+
+			foreach ( $get['members'] as $member ) {
+				if ( $value === $member['merge_fields'][ $mergeFieldKey ] ) {
+					return $member['email_address'];
+				}
+			}
+		}
+	}
+
+	/**
 	 * Upsert subscriber
 	 *
 	 * @param array $mcData
@@ -83,6 +120,22 @@ class MailChimpClient {
 		}
 
 		return $put;
+	}
+
+	/**
+	 * Delete subscriber
+	 *
+	 * @param string $email
+	 *
+	 * @throws \Exception
+	 */
+	public function deleteSubscriber( string $email ) {
+		$id     = self::calculateSubscriberId( $email );
+		$delete = $this->client->delete( "lists/{$this->listId}/members/$id" );
+
+		if ( ! $delete ) {
+			throw new \Exception( "Delete request to Mailchimp failed: {$this->client->getLastError()}" );
+		}
 	}
 
 	/**
