@@ -16,7 +16,7 @@ use App\Exceptions\ParseMailchimpDataException;
  * @package App\Synchronizer\Mapper
  */
 class FieldMapGroup extends FieldMap {
-	protected const MAILCHIMP_PARENT_KEY = 'interests';
+	public const MAILCHIMP_PARENT_KEY = 'interests';
 
 	private $mailchimpCategoryId;
 	private $trueCondition;

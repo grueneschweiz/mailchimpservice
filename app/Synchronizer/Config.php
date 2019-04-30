@@ -15,7 +15,6 @@ class Config {
 	private $auth;
 	private $dataOwner;
 	private $mailchimp;
-	private $syncAll;
 
 	/**
 	 * Config constructor.

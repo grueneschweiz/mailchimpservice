@@ -4,8 +4,10 @@
 namespace App\Synchronizer;
 
 
+use App\Http\Controllers\RestApi\CrmClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
@@ -37,7 +39,9 @@ class CrmToMailchimpSynchronizer {
 		$this->config = $config;
 		$this->userId = $userId;
 
-		$this->crmClient = new CrmClient( $config->getCrmCredentials() );
+		$crmCred = $config->getCrmCredentials();
+
+		$this->crmClient = new CrmClient( $crmCred['clientId'], $crmCred['clientSecret'], $crmCred['url'] );
 	}
 
 	/**
@@ -56,6 +60,7 @@ class CrmToMailchimpSynchronizer {
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
+	 * @throws RequestException
 	 */
 	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
 		// get revision id of last successful sync (or -1 if first run)
@@ -73,7 +78,8 @@ class CrmToMailchimpSynchronizer {
 		}
 
 		// get changed members
-		$crmData = $this->crmClient->get( "member/changed/$revId/$offset/$limit" ); // todo: adapt webling wrapper
+		$get     = $this->crmClient->get( "member/changed/$revId/$offset/$limit" );
+		$crmData = json_decode( (string) $get->getBody() ); // todo: adapt webling wrapper
 
 		// base case: everything worked well. update revision id
 		if ( empty( $crmData ) ) {
@@ -119,13 +125,16 @@ class CrmToMailchimpSynchronizer {
 	 * Make sure there is only one open revision per user. (if there were
 	 * existing ones, a previous sync must have failed. lets resync all
 	 * records then, so we have a self healing approach).
+	 *
+	 * @throws RequestException
 	 */
 	private function openNewRevision() {
 		// delete old open revisions (from failed syncs)
 		$this->deleteOpenRevisions();
 
 		// get current revision id from crm
-		$latestRevId = (int) $this->crmClient->get( 'revision' );
+		$get         = $this->crmClient->get( 'revision' );
+		$latestRevId = (int) json_decode( (string) $get->getBody() );
 
 		// add current revision
 		$latestRev                 = new Revision();

@@ -4,8 +4,12 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\ConfigException;
+use App\Http\Controllers\RestApi\CrmClient;
 use App\Mail\WrongSubscription;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -48,7 +52,9 @@ class MailchimpToCrmSynchronizer {
 		$this->config = $config;
 		$this->userId = $userId;
 
-		$this->crmClient = new CrmClient( $config->getCrmCredentials() );
+		$crmCred = $config->getCrmCredentials();
+
+		$this->crmClient = new CrmClient( $crmCred['clientId'], $crmCred['clientSecret'], $crmCred['url'] );
 	}
 
 	/**
@@ -58,6 +64,8 @@ class MailchimpToCrmSynchronizer {
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseMailchimpDataException
+	 * @throws RequestException
+	 * @throws \App\Exceptions\ParseCrmDataException
 	 */
 	public function syncSingle( array $mcData ) {
 		$mapper  = new Mapper( $this->config->getFieldMaps() );
@@ -82,14 +90,16 @@ class MailchimpToCrmSynchronizer {
 			case self::MC_UNSUBSCRIBE:
 				// get contact from crm
 				// set all subscriptions, that are configured in this config to NO
-				$crmData = $this->crmClient->get( $crmData['id'] );
+				$get     = $this->crmClient->get( '/member/' . $crmData['id'] );
+				$crmData = json_decode( (string) $get->getBody() );
 				$crmData = $this->unsubscribeAll( $crmData );
 				break;
 
 			case self::MC_CLEANED_EMAIL:
-				// set email1to invalid
+				// set email1 to invalid
 				// add note 'email set to invalid because it bounced in mailchimp'
-				$crmData                 = $this->crmClient->get( $crmData['id'] );
+				$get                     = $this->crmClient->get( '/member/' . $crmData['id'] );
+				$crmData                 = json_decode( (string) $get->getBody() );
 				$crmData['emailStatus']  = 'invalid';
 				$crmData['notesCountry'] .= sprintf( "\n%s: Mailchimp reported the email as invalid. Email status changed.", date( 'Y-m-d H:i' ) );
 				break;
@@ -104,8 +114,7 @@ class MailchimpToCrmSynchronizer {
 
 			case self::MC_EMAIL_UPDATE:
 				// update email1
-				$crmData = $this->crmClient->get( $crmData['id'] );
-				$crmData = $this->updateEmail( $mcData, $crmData );
+				$crmData = $this->updateEmail( $mcData );
 				break;
 
 			default:
@@ -117,7 +126,7 @@ class MailchimpToCrmSynchronizer {
 				) );
 		}
 
-		$this->crmClient->put( $crmData );
+		$this->crmClient->put( '/member/' . $crmData['id'], $crmData );
 
 		Log::debug( sprintf(
 			"Sync successful (record id: %d)",
@@ -157,5 +166,49 @@ class MailchimpToCrmSynchronizer {
 
 		Mail::to( $dataOwner['email'] )
 		    ->send( new WrongSubscription( $mailData ) );
+	}
+
+	/**
+	 * Return $crmData with all subscriptions disabled
+	 *
+	 * @param array $crmData
+	 *
+	 * @return array in crmData format
+	 *
+	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseCrmDataException
+	 * @throws \App\Exceptions\ParseMailchimpDataException
+	 */
+	private function unsubscribeAll( array $crmData ): array {
+		$mapper = new Mapper( $this->config->getFieldMaps() );
+		$mcData = $mapper->crmToMailchimp( $crmData );
+
+		foreach ( $mcData[ FieldMapGroup::MAILCHIMP_PARENT_KEY ] as $key => $value ) {
+			$mcData[ FieldMapGroup::MAILCHIMP_PARENT_KEY ][ $key ] = false;
+		}
+
+		return $mapper->mailchimpToCrm( $mcData );
+	}
+
+	/**
+	 * Update the email field in $crmData according to the email in $mcData
+	 *
+	 * @param array $mcData
+	 *
+	 * @return array in crmData format with email only
+	 *
+	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseMailchimpDataException
+	 */
+	private function updateEmail( array $mcData ): array {
+		foreach ( $this->config->getFieldMaps() as $map ) {
+			if ( $map->isEmail() ) {
+				$map->addMailchimpData( $mcData );
+
+				return $map->getCrmDataArray();
+			}
+		}
+
+		throw new ConfigException( 'No field of type "email"' );
 	}
 }
