@@ -2,9 +2,9 @@ auth:
   mailchimp:
     apikey: apikey
   crm:
-    clientId: 'crmclientid'
+    clientId: 1
     clientSecret: 'crmclientsecret'
-    url: 'crmclienturl'
+    url: 'https://crmclient.url'
 
 dataOwner:
   email: dataowner@example.com

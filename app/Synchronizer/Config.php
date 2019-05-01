@@ -186,7 +186,9 @@ class Config {
 	public function getMailchimpKeyOfCrmId(): string {
 		foreach ( $this->getFieldMaps() as $map ) {
 			if ( 'id' === $map->getCrmKey() ) {
-				return array_key_first( $map->getMailchimpDataArray() );
+				$keys = array_keys( $map->getMailchimpDataArray() );
+
+				return reset( $keys );
 			}
 		}
 

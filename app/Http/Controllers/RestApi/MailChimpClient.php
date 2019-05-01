@@ -58,6 +58,10 @@ class MailChimpClient {
 			throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
 		}
 
+		if ( isset( $get['status'] ) && is_numeric($get['status']) && $get['status'] !== 200 ) {
+			throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
+		}
+
 		return $get;
 	}
 
@@ -85,6 +89,10 @@ class MailChimpClient {
 				throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
 			}
 
+			if ( isset( $get['status'] ) ) {
+				throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
+			}
+
 			if ( 0 === count( $get['members'] ) ) {
 				return false;
 			}
@@ -94,6 +102,8 @@ class MailChimpClient {
 					return $member['email_address'];
 				}
 			}
+
+			$offset += self::MC_GET_LIMIT;
 		}
 	}
 
@@ -109,6 +119,10 @@ class MailChimpClient {
 	public function putSubscriber( array $mcData ) {
 		if ( empty( $mcData['email_address'] ) ) {
 			throw new \InvalidArgumentException( 'Missing email_address.' );
+		}
+
+		if ( ! isset( $mcData['status'] ) && ! isset( $mcData['status_if_new'] ) ) {
+			$mcData['status_if_new'] = 'subscribed'; // todo: check if we should change it not only if new, if someone unsubscribes and then wished to resubscribe via webling
 		}
 
 		$id = self::calculateSubscriberId( $mcData['email_address'] );

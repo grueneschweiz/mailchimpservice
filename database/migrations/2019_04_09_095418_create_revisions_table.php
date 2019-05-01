@@ -14,11 +14,11 @@ class CreateRevisionsTable extends Migration {
 		Schema::create( 'revisions', function ( Blueprint $table ) {
 			$table->increments( 'id' );
 			$table->unsignedInteger( 'revision_id' );
-			$table->unsignedInteger( 'user_id' );
+			$table->string( 'config_name' );
 			$table->boolean( 'sync_successful' );
 			$table->timestamps();
 
-			$table->foreign( 'user_id' )->references( 'id' )->on( 'users' );
+			$table->index( 'config_name' );
 		} );
 	}
 

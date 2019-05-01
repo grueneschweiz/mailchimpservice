@@ -32,7 +32,6 @@ class ConfigTest extends TestCase {
 		$cred = $this->config->getMailchimpCredentials();
 
 		$this->assertEquals( 'apikey', $cred['apikey'] );
-		$this->assertEquals( 'apiurl', $cred['url'] );
 	}
 
 	public function testGetDataOwner() {
@@ -52,5 +51,13 @@ class ConfigTest extends TestCase {
 
 	public function testSyncAll() {
 		$this->assertFalse( $this->config->getSyncAll() );
+	}
+
+	public function testGetMailchimpListId() {
+		$this->assertEquals( '6f33e28fa3', $this->config->getMailchimpListId() );
+	}
+
+	public function testGetMailchimpKeyOfCrmId() {
+		$this->assertEquals( 'WEBLINGID', $this->config->getMailchimpKeyOfCrmId() );
 	}
 }
