@@ -80,14 +80,16 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$crmClient->setValue( $this->sync, $client );
 	}
 
-	public function testSyncAllChanges() {
+	public function testSyncAllChanges_add_all() {
+		$revisionId = 123;
+
 		$member1 = $this->getMember( 1, 'member1@gruene.ch' ); // relevant
 		$member2 = $this->getMember( 2, 'member2@gruene.ch' ); // not relevant
 
 		$member2['newsletterCountryD'] = 'no';
 
 		$this->mockCrmResponse( [
-			new Response( 200, [], json_encode( 123 ) ),
+			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
 				1 => $member1
 			] ) ),
@@ -124,17 +126,80 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$getRevId = new \ReflectionMethod( $this->sync, 'getLatestSuccessfullSyncRevisionId' );
 		$getRevId->setAccessible( true );
 		$id = $getRevId->invoke( $this->sync );
-		$this->assertEquals( 123, $id );
+		$this->assertEquals( $revisionId, $id );
+	}
 
+	public function testSyncAllChanges_update_fromRevision() {
+		$revisionId = 124;
 
-		// part 2: next revision - update
-		// member1: change subscriptions
-		// member2: make relevant
+		$member1 = $this->getMember( 1, 'member1@gruene.ch' );
+		$member1['emailStatus'] = 'invalid';
 
-		// part 3: next revision - delete
-		// member1: delete
-		// member2: delete
+		$member2 = $this->getMember( 2, 'member2@gruene.ch' ); // not relevant
 
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				2 => $member2
+			] ) ),
+			new Response( 200, [], json_encode( [
+				2 => $member2
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		// assert member1 not in mailchimp
+		$subscriber1 = null;
+		try {
+			$subscriber1 = $this->mcClientTesting->getSubscriber( $member1['email1'] );
+		} catch ( \Exception $e ) {
+		}
+		$this->assertNull( $subscriber1 );
+
+		// assert member2 in mailchimp
+		$subscriber2 = $this->mcClientTesting->getSubscriber( $member2['email1'] );
+		$this->assertEquals( $member2['email1'], $subscriber2['email_address'] );
+	}
+
+	public function testSyncAllChanges_delete_fromRevision() {
+		$revisionId = 125;
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => null
+			] ) ),
+			new Response( 200, [], json_encode( [
+				2 => null
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		// assert member1 not in mailchimp
+		$subscriber1 = null;
+		try {
+			$subscriber1 = $this->mcClientTesting->getSubscriber( 'member1@gruene.ch' );
+		} catch ( \Exception $e ) {
+		}
+		$this->assertNull( $subscriber1 );
+
+		// assert member2 not in mailchimp
+		$subscriber2 = null;
+		try {
+			$subscriber2 = $this->mcClientTesting->getSubscriber( 'member2@gruene.ch' );
+		} catch ( \Exception $e ) {
+		}
+		$this->assertNull( $subscriber2 );
 	}
 
 	private function getMember( $crmId, $email ) {

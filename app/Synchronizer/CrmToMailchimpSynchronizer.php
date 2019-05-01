@@ -110,7 +110,7 @@ class CrmToMailchimpSynchronizer {
 			foreach ( $crmData as $crmId => $record ) {
 				// delete the once that were deleted in the crm
 				if ( null === $record ) {
-					$email = $this->mailchimpClient->getSubscriberEmailByMergeField( (string) $crmId, $mcCrmIdFieldKey );
+					$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
 
 					if ( $email ) {
 						$this->mailchimpClient->deleteSubscriber( $email );
@@ -121,8 +121,8 @@ class CrmToMailchimpSynchronizer {
 				}
 
 				// get the master record
-				$get     = $this->crmClient->get( "member/$crmId/main" );
-				$main    = json_decode( (string) $get->getBody(), true );
+				$get  = $this->crmClient->get( "member/$crmId/main" );
+				$main = json_decode( (string) $get->getBody(), true );
 				unset( $crmData[ $crmId ] );
 				$crmData += $main;
 			}
@@ -135,6 +135,15 @@ class CrmToMailchimpSynchronizer {
 			foreach ( $relevantRecords as $crmRecord ) {
 				$mcRecord = $mapper->crmToMailchimp( $crmRecord );
 				$this->mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
+			}
+
+			// remove all subscribers that unsubscribed via crm
+			$rejectedRecords = $filter->getRejected();
+			foreach ( $rejectedRecords as $crmId => $record ) {
+				$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
+				if ( $email ) {
+					$this->mailchimpClient->deleteSubscriber( $email );
+				}
 			}
 
 			Log::debug( sprintf(
@@ -193,7 +202,7 @@ class CrmToMailchimpSynchronizer {
 			$openRevisions->delete();
 
 			Log::notice( sprintf(
-				'%d open (failed) revisions for config %s were deleted.',
+				'%d failed revisions for config %s were deleted.',
 				$count,
 				$this->configName
 			) );

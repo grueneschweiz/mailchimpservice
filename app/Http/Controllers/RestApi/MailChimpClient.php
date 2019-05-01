@@ -31,6 +31,15 @@ class MailChimpClient {
 	private $listId;
 
 	/**
+	 * In memory cache for all subscriber.
+	 *
+	 * Key: crmId, value: email
+	 *
+	 * @var array
+	 */
+	private $subscribers;
+
+	/**
 	 * @param string $api_key MailChimp api key
 	 *
 	 * @throws \Exception
@@ -58,7 +67,7 @@ class MailChimpClient {
 			throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
 		}
 
-		if ( isset( $get['status'] ) && is_numeric($get['status']) && $get['status'] !== 200 ) {
+		if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
 			throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
 		}
 
@@ -70,18 +79,37 @@ class MailChimpClient {
 	 *
 	 * Note: This function is really costly, since mailchimp's api doesn't allow to search by merge tag by april 2019.
 	 *
-	 * @param string $value
-	 * @param string $mergeFieldKey
+	 * @param string $crmId
+	 * @param string $crmIdKey
 	 *
 	 * @return false|string email address on match else false
 	 *
 	 * @throws \Exception
 	 */
-	public function getSubscriberEmailByMergeField( string $value, string $mergeFieldKey ) {
+	public function getSubscriberEmailByCrmId( string $crmId, string $crmIdKey ) {
+		$subscribers = $this->getAllSubscribers( $crmIdKey );
+
+		return array_search( $crmId, $subscribers );
+	}
+
+	/**
+	 * Return cached array of all mailchimp entries with their email address as key and the crm id as value.
+	 *
+	 * Note: This function is really costly. We use it since mailchimp's api doesn't allow to search by merge tag by april 2019.
+	 *
+	 * @param string $crmIdKey
+	 *
+	 * @return array [email => crmId, ...]
+	 *
+	 * @throws \Exception
+	 */
+	private function getAllSubscribers( string $crmIdKey ): array {
+		if ( $this->subscribers ) {
+			return $this->subscribers;
+		}
+
 		$offset = 0;
 
-		// yes by april 2019, there is no better way to do that
-		// because mailchimp doesn't let us search by merge tag
 		while ( true ) {
 			$get = $this->client->get( "lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset" );
 
@@ -89,22 +117,22 @@ class MailChimpClient {
 				throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
 			}
 
-			if ( isset( $get['status'] ) ) {
+			if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
 				throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
 			}
 
 			if ( 0 === count( $get['members'] ) ) {
-				return false;
+				break;
 			}
 
 			foreach ( $get['members'] as $member ) {
-				if ( $value === $member['merge_fields'][ $mergeFieldKey ] ) {
-					return $member['email_address'];
-				}
+				$this->subscribers[ $member['email_address'] ] = $member['merge_fields'][ $crmIdKey ];
 			}
 
 			$offset += self::MC_GET_LIMIT;
 		}
+
+		return $this->subscribers;
 	}
 
 	/**
