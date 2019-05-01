@@ -62,8 +62,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$mailchimpClient->setValue( $this->sync, new MailChimpClient( env( 'MAILCHIMP_APIKEY' ), $config->getMailchimpListId() ) );
 		$this->mcClientTesting = $mailchimpClient->getValue( $this->sync );
 
-		$this->emailMember1 = str_random().'@example.com';
-		$this->emailMember2 = str_random().'@example.com';
+		$this->emailMember1 = str_random().'@mymail.com';
+		$this->emailMember2 = str_random().'@mymail.com';
 	}
 
 	private function mockCrmResponse( array $responses ) {
