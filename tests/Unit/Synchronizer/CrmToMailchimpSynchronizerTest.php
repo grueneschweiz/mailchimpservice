@@ -28,6 +28,9 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	 */
 	private $sync;
 
+	private $emailMember1;
+	private $emailMember2;
+
 	public function setUp() {
 		parent::setUp();
 
@@ -53,13 +56,14 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$c->setAccessible( true );
 		$c->setValue( $this->sync, $config );
 
-		// mock the crm client
-
 		// replace the mailchimp client with one with secure but real credentials
 		$mailchimpClient = new \ReflectionProperty( $this->sync, 'mailchimpClient' );
 		$mailchimpClient->setAccessible( true );
 		$mailchimpClient->setValue( $this->sync, new MailChimpClient( env( 'MAILCHIMP_APIKEY' ), $config->getMailchimpListId() ) );
 		$this->mcClientTesting = $mailchimpClient->getValue( $this->sync );
+
+		$this->emailMember1 = str_random().'@example.com';
+		$this->emailMembers = str_random().'@example.com';
 	}
 
 	private function mockCrmResponse( array $responses ) {
@@ -83,8 +87,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_add_all() {
 		$revisionId = 123;
 
-		$member1 = $this->getMember( 1, 'member1@gruene.ch' ); // relevant
-		$member2 = $this->getMember( 2, 'member2@gruene.ch' ); // not relevant
+		$member1 = $this->getMember( 1, $this->emailMember1 ); // relevant
+		$member2 = $this->getMember( 2, $this->emailMember2 ); // not relevant
 
 		$member2['newsletterCountryD'] = 'no';
 
@@ -132,10 +136,10 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_update_fromRevision() {
 		$revisionId = 124;
 
-		$member1 = $this->getMember( 1, 'member1@gruene.ch' );
+		$member1 = $this->getMember( 1, $this->emailMember1 );
 		$member1['emailStatus'] = 'invalid';
 
-		$member2 = $this->getMember( 2, 'member2@gruene.ch' ); // not relevant
+		$member2 = $this->getMember( 2, $this->emailMember2 ); // not relevant
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
@@ -188,7 +192,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		// assert member1 not in mailchimp
 		$subscriber1 = null;
 		try {
-			$subscriber1 = $this->mcClientTesting->getSubscriber( 'member1@gruene.ch' );
+			$subscriber1 = $this->mcClientTesting->getSubscriber( $this->emailMember1 );
 		} catch ( \Exception $e ) {
 		}
 		$this->assertNull( $subscriber1 );
@@ -196,7 +200,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		// assert member2 not in mailchimp
 		$subscriber2 = null;
 		try {
-			$subscriber2 = $this->mcClientTesting->getSubscriber( 'member2@gruene.ch' );
+			$subscriber2 = $this->mcClientTesting->getSubscriber( $this->emailMember2 );
 		} catch ( \Exception $e ) {
 		}
 		$this->assertNull( $subscriber2 );
