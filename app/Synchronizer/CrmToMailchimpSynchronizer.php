@@ -100,8 +100,8 @@ class CrmToMailchimpSynchronizer {
 				return;
 			}
 
-			// delete the once that were deleted in the crm
 			foreach ( $crmData as $crmId => $record ) {
+				// delete the once that were deleted in the crm
 				if ( null === $record ) {
 					$email = $mailchimpClient->getSubscriberEmailByMergeField( (string) $crmId, $mcCrmIdFieldKey );
 
@@ -110,7 +110,12 @@ class CrmToMailchimpSynchronizer {
 					}
 
 					unset( $crmData[ $crmId ] );
+					continue;
 				}
+
+				// get the master record
+				$get               = $this->crmClient->get( "member/$crmId/main" );
+				$crmData[ $crmId ] = json_decode( (string) $get->getBody() );
 			}
 
 			// only process the relevant datasets
