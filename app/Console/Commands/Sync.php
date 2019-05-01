@@ -42,6 +42,8 @@ class Sync extends Command {
 	 * Execute the console command.
 	 *
 	 * @return mixed
+	 *
+	 * @throws \Exception
 	 */
 	public function handle() {
 		switch ( $this->argument( 'direction' ) ) {
@@ -73,6 +75,8 @@ class Sync extends Command {
 	 * Sync all crm records to mailchimp
 	 *
 	 * @return int
+	 *
+	 * @throws \Exception
 	 */
 	private function syncToMailchimp() {
 		$limit  = $this->option( 'limit' );
