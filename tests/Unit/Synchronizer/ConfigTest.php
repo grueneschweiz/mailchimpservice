@@ -23,9 +23,9 @@ class ConfigTest extends TestCase {
 	public function testGetCrmCredentials() {
 		$cred = $this->config->getCrmCredentials();
 
-		$this->assertEquals( 'crmclientid', $cred['clientId'] );
+		$this->assertEquals( 1, $cred['clientId'] );
 		$this->assertEquals( 'crmclientsecret', $cred['clientSecret'] );
-		$this->assertEquals( 'crmclienturl', $cred['url'] );
+		$this->assertEquals( 'https://crmclient.url', $cred['url'] );
 	}
 
 	public function testGetMailchimpCredentials() {

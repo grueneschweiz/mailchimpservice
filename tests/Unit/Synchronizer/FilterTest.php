@@ -26,35 +26,36 @@ class FilterTest extends TestCase {
 	}
 
 	public function testFilter__status_blocked() {
-		$record = $this->getRecord();
+		$record                 = $this->getRecord();
 		$record['recordStatus'] = 'blocked';
-		$records = [ $record ];
+		$records                = [ $record ];
 		$this->assertEmpty( $this->filter->filter( $records ) );
 	}
 
 	public function testFilter__email_empty() {
-		$record = $this->getRecord();
+		$record           = $this->getRecord();
 		$record['email1'] = '';
-		$records = [ $record ];
+		$records          = [ $record ];
 		$this->assertEmpty( $this->filter->filter( $records ) );
 	}
 
 	public function testFilter__email_invalid() {
-		$record = $this->getRecord();
+		$record           = $this->getRecord();
 		$record['email1'] = 'email@example.com invalid';
-		$records = [ $record ];
+		$records          = [ $record ];
 		$this->assertEmpty( $this->filter->filter( $records ) );
 	}
 
 	public function testFilter__no_subscriptions() {
-		$record = $this->getRecord();
+		$record                         = $this->getRecord();
 		$record['pressReleaseCountryD'] = 'no';
-		$records = [ $record ];
+		$records                        = [ $record ];
 		$this->assertEmpty( $this->filter->filter( $records ) );
 	}
 
 	private function getRecord() {
 		return [
+			'id'                   => 1,
 			'recordStatus'         => 'active',
 			'email1'               => 'mail@example.com',
 			'emailStatus'          => 'active',
