@@ -19,6 +19,7 @@ Thumbs.db
 /.vscode
 /.vagrant
 .env
+.env.testing
 .docker/mysql
 /config/*.yml
 !/config/example.com.yml
