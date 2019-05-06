@@ -151,7 +151,7 @@ class MailChimpClient {
 		}
 
 		if ( ! isset( $mcData['status'] ) && ! isset( $mcData['status_if_new'] ) ) {
-			$mcData['status_if_new'] = 'subscribed'; // todo: check if we should change it not only if new, if someone unsubscribes and then wished to resubscribe via webling
+			$mcData['status_if_new'] = 'subscribed';
 		}
 
 		if ( ! $email ) {
@@ -164,6 +164,10 @@ class MailChimpClient {
 
 		if ( ! $put ) {
 			throw new \Exception( "Put request to Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
+			throw new \Exception( "Put request against Mailchimp failed (status code: {$put['status']}): {$put['detail']}" );
 		}
 
 		return $put;
@@ -182,6 +186,10 @@ class MailChimpClient {
 
 		if ( ! $delete ) {
 			throw new \Exception( "Delete request to Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		if ( isset( $delete['status'] ) && is_numeric( $delete['status'] ) && $delete['status'] !== 204 ) {
+			throw new \Exception( "Put request against Mailchimp failed (status code: {$delete['status']}): {$delete['detail']}" );
 		}
 	}
 
