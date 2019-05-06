@@ -225,15 +225,15 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$revisionId = 127;
 
 		$email   = str_random() . '@mymail.com';
-		$member1 = $this->getMember( 1, $email );
+		$member1 = $this->getMember( random_int( 10000, 1000000 ), $email );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
@@ -252,10 +252,10 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
