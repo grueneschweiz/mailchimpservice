@@ -62,8 +62,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$mailchimpClient->setValue( $this->sync, new MailChimpClient( env( 'MAILCHIMP_APIKEY' ), $config->getMailchimpListId() ) );
 		$this->mcClientTesting = $mailchimpClient->getValue( $this->sync );
 
-		$this->emailMember1 = str_random().'@mymail.com';
-		$this->emailMember2 = str_random().'@mymail.com';
+		$this->emailMember1 = str_random() . '@mymail.com';
+		$this->emailMember2 = str_random() . '@mymail.com';
 	}
 
 	private function mockCrmResponse( array $responses ) {
@@ -136,10 +136,10 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_update_fromRevision() {
 		$revisionId = 124;
 
-		$member1 = $this->getMember( 1, $this->emailMember1 );
+		$member1                = $this->getMember( 1, $this->emailMember1 );
 		$member1['emailStatus'] = 'invalid';
 
-		$member2 = $this->getMember( 2, $this->emailMember2 ); // not relevant
+		$member2 = $this->getMember( 2, $this->emailMember2 );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
@@ -171,6 +171,102 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		// assert member2 in mailchimp
 		$subscriber2 = $this->mcClientTesting->getSubscriber( $member2['email1'] );
 		$this->assertEquals( $member2['email1'], $subscriber2['email_address'] );
+	}
+
+	public function testSyncAllChanges_email_change() {
+		// precondition
+		$revisionId = 126;
+
+		$email   = str_random() . '@mymail.com';
+		$member1 = $this->getMember( 1, $email );
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber1 = $this->mcClientTesting->getSubscriber( $email );
+		$this->assertNotEmpty( $subscriber1 );
+
+		// the test
+		$member1['email1'] = str_random() . '@mymail.com';
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber2 = $this->mcClientTesting->getSubscriber( $member1['email1'] );
+		$this->assertEquals( $subscriber1['merge_fields']['WEBLINGID'], $subscriber2['merge_fields']['WEBLINGID'] );
+		$this->assertNotEquals( $subscriber1['email_address'], $subscriber2['email_address'] );
+
+		// cleanup
+		$this->mcClientTesting->deleteSubscriber( $member1['email1'] );
+	}
+
+	public function testSyncAllChanges_resubscribe() {
+		// precondition
+		$revisionId = 127;
+
+		$email   = str_random() . '@mymail.com';
+		$member1 = $this->getMember( 1, $email );
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber1 = $this->mcClientTesting->getSubscriber( $email );
+		$this->assertNotEmpty( $subscriber1 );
+
+		$subscriber1['status'] = 'unsubscribed';
+		$this->mcClientTesting->putSubscriber( $subscriber1 );
+		$subscriber1 = $this->mcClientTesting->getSubscriber( $email );
+		$this->assertEquals( 'unsubscribed', $subscriber1['status'] );
+
+		// the test
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [
+				1 => $member1
+			] ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber2 = $this->mcClientTesting->getSubscriber( $email );
+		$this->assertEquals( 'subscribed', $subscriber2['status'] );
+
+		// cleanup
+		$this->mcClientTesting->deleteSubscriber( $email );
 	}
 
 	public function testSyncAllChanges_delete_fromRevision() {

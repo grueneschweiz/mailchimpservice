@@ -139,12 +139,13 @@ class MailChimpClient {
 	 * Upsert subscriber
 	 *
 	 * @param array $mcData
+	 * @param string $email provide email to update subscribers email address
 	 *
 	 * @return array|false
 	 * @throws \Exception
 	 * @throws \InvalidArgumentException
 	 */
-	public function putSubscriber( array $mcData ) {
+	public function putSubscriber( array $mcData, string $email = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
 			throw new \InvalidArgumentException( 'Missing email_address.' );
 		}
@@ -153,7 +154,11 @@ class MailChimpClient {
 			$mcData['status_if_new'] = 'subscribed'; // todo: check if we should change it not only if new, if someone unsubscribes and then wished to resubscribe via webling
 		}
 
-		$id = self::calculateSubscriberId( $mcData['email_address'] );
+		if ( ! $email ) {
+			$email = $mcData['email_address'];
+		}
+
+		$id = self::calculateSubscriberId( $email );
 
 		$put = $this->client->put( "lists/{$this->listId}/members/$id", $mcData );
 

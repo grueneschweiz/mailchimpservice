@@ -130,10 +130,21 @@ class CrmToMailchimpSynchronizer {
 			// only process the relevant datasets
 			$relevantRecords = $filter->filter( $crmData );
 
+			// handle records already subscribed to mailchimp
+			// where the email address has changed in the crm
+			foreach ( $relevantRecords as $crmId => $crmRecord ) {
+				$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
+				if ( $email && $email !== $crmRecord['email1'] ) {
+					$mcRecord = $mapper->crmToMailchimp( $crmRecord );
+					$this->mailchimpClient->putSubscriber( $mcRecord, $email );
+				}
+			}
+
 			// map crm data to mailchimp data and store them in mailchimp
 			// don't use mailchimps batch operations, because they are async
 			foreach ( $relevantRecords as $crmRecord ) {
-				$mcRecord = $mapper->crmToMailchimp( $crmRecord );
+				$mcRecord           = $mapper->crmToMailchimp( $crmRecord );
+				$mcRecord['status'] = 'subscribed'; // handles re-subscriptions
 				$this->mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
 			}
 
