@@ -22,8 +22,7 @@ Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'api' ] ], function () {
 	|--------------------------------------------------------------------------
 	*/
 	Route::group( [ 'prefix' => 'mailchimp' ], function () {
-
-		Route::get( 'webhook/{secret}', function ( Request $request, string $secret ) {
+		Route::post( 'webhook/{secret}', function ( Request $request, string $secret ) {
 			$controller = new RestController();
 			$controller->handle( $request, $secret );
 

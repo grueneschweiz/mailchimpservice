@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 class RestController {
 	public function handle( Request $request, string $secret ) {
 		/** @var MailchimpEndpoint|null $endpoint */
-		$endpoint = MailchimpEndpoint::where( 'endpoint_secret', $secret )->first();
+		$endpoint = MailchimpEndpoint::where( 'secret', $secret )->first();
 
 		if ( ! $endpoint ) {
 			abort( 401, 'Invalid secret.' );

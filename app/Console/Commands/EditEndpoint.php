@@ -63,7 +63,7 @@ class EditEndpoint extends EndpointCommand {
 
 			$this->info( 'New endpoint secret generated.' );
 			$this->line( '<comment>Endpoint secret:</comment> ' . $endpoint->secret );
-			$this->info( '<comment>Endpoint url:</comment> ' . route( self::MC_ENDPOINT_ROUTE_NAME, [ 'secret' => $endpoint->secret ] ) );
+			$this->line( '<comment>Endpoint url:</comment> ' . route( self::MC_ENDPOINT_ROUTE_NAME, [ 'secret' => $endpoint->secret ] ) );
 		}
 
 		return 0;
