@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Http\Controllers\RestApi;
+namespace App\Http;
 
 
 use App\OAuthClient;

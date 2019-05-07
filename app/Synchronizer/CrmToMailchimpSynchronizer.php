@@ -4,8 +4,8 @@
 namespace App\Synchronizer;
 
 
-use App\Http\Controllers\RestApi\CrmClient;
-use App\Http\Controllers\RestApi\MailChimpClient;
+use App\Http\CrmClient;
+use App\Http\MailChimpClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;

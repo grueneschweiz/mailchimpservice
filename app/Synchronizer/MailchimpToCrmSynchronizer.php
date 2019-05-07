@@ -5,8 +5,8 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\ConfigException;
-use App\Http\Controllers\RestApi\CrmClient;
-use App\Http\Controllers\RestApi\MailChimpClient;
+use App\Http\CrmClient;
+use App\Http\MailChimpClient;
 use App\Mail\WrongSubscription;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;

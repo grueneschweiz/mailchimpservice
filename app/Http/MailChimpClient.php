@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers\RestApi;
+namespace App\Http;
 
-use \DrewM\MailChimp\MailChimp;
+use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
 	private const MC_GET_LIMIT = 100;

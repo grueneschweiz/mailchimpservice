@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\RestApi;
 
 
+use App\Http\CrmClient;
 use App\OAuthClient;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
