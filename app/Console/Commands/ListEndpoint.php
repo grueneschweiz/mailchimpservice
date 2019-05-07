@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\MailchimpEndpoint;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class ListEndpoint extends Command {
 	/**
@@ -35,9 +35,9 @@ class ListEndpoint extends Command {
 	 * @return mixed
 	 */
 	public function handle() {
-		$data = DB::table( 'mailchimp_endpoint' )->get()->toArray();
+		$data = MailchimpEndpoint::all()->toArray();
 
-		$headers = [ 'ID', 'Endpoint Secret', 'Config Name', 'Created' ];
+		$headers = [ 'ID', 'Endpoint Secret', 'Config Name', 'Created', 'Updated' ];
 
 		$this->table( $headers, $data );
 

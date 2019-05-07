@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * @package App
  *
  * @property int $id
- * @property string $endpoint_secret
+ * @property string $secret
  * @property string $config
  * @property \DateTime $created_at
  * @property \DateTime $updated_at

@@ -37,6 +37,7 @@ class Config {
 	 * @throws ConfigException
 	 */
 	private function loadConfig( string $configFileName ) {
+		$configFileName   = ltrim( $configFileName, './' );
 		$configFolderPath = rtrim( config( 'app.config_base_path' ), '/' );
 		$configFilePath   = base_path( $configFolderPath . '/' . $configFileName );
 

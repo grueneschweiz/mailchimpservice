@@ -54,15 +54,15 @@ class AddEndpoint extends EndpointCommand {
 	 * @param string $configFileName
 	 */
 	private function addEndpoint( string $configFileName ) {
-		$endpoint                  = new MailchimpEndpoint();
-		$endpoint->config          = $configFileName;
-		$endpoint->endpoint_secret = $this->getNewEndpointSecret();
+		$endpoint         = new MailchimpEndpoint();
+		$endpoint->config = $configFileName;
+		$endpoint->secret = $this->getNewEndpointSecret();
 		$endpoint->save();
 
 		$this->info( 'New endpoint created successfully.' );
-		$this->line( '<comment>Config file:</comment> ' . $endpoint->config );
-		$this->line( '<comment>Endpoint secret:</comment> ' . $endpoint->endpoint_secret );
 		$this->line( '<comment>ID:</comment> ' . $endpoint->id );
-		$this->info( '<comment>Endpoint url:</comment> ' . route( self::MC_ENDPOINT_ROUTE_NAME ) );
+		$this->line( '<comment>Config file:</comment> ' . $endpoint->config );
+		$this->line( '<comment>Endpoint secret:</comment> ' . $endpoint->secret );
+		$this->info( '<comment>Endpoint url:</comment> ' . route( self::MC_ENDPOINT_ROUTE_NAME, [ 'secret' => $endpoint->secret ] ) );
 	}
 }

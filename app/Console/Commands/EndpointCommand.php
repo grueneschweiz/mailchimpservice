@@ -70,8 +70,12 @@ abstract class EndpointCommand extends Command {
 	 * Print config validation errors
 	 */
 	protected function printConfigErrors() {
-		foreach ( $this->configErrors as $error ) {
-			$this->error( $error );
+		if ( $this->configErrors ) {
+			$this->error( 'Invalid config file:' );
+
+			foreach ( $this->configErrors as $error ) {
+				$this->info( $error );
+			}
 		}
 	}
 

@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 class CreateMailchimpEndpointsTable extends Migration
 {
@@ -15,7 +15,7 @@ class CreateMailchimpEndpointsTable extends Migration
     {
         Schema::create('mailchimp_endpoints', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('endpoint_secret')->unique();
+	        $table->string( 'secret' )->unique();
             $table->string('config');
             $table->timestamps();
         });
