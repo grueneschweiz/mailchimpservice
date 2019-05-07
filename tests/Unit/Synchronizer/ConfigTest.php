@@ -60,4 +60,18 @@ class ConfigTest extends TestCase {
 	public function testGetMailchimpKeyOfCrmId() {
 		$this->assertEquals( 'WEBLINGID', $this->config->getMailchimpKeyOfCrmId() );
 	}
+
+	public function testIsValid() {
+		$this->assertTrue( $this->config->isValid() );
+	}
+
+	public function testIsValid__false() {
+		$config = new Config( 'test_invalid.io.yml' );
+		$this->assertFalse( $config->isValid() );
+	}
+
+	public function testGetErrors() {
+		$config = new Config( 'test_invalid.io.yml' );
+		$this->assertCount( 5, $config->getErrors() );
+	}
 }

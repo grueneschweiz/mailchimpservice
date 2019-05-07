@@ -10,11 +10,13 @@ use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 class Config {
+	private const CRM_ID_KEY = 'id';
 
 	private $fields;
 	private $auth;
 	private $dataOwner;
 	private $mailchimp;
+	private $errors;
 
 	/**
 	 * Config constructor.
@@ -58,7 +60,7 @@ class Config {
 		if ( $config['dataOwner'] ) {
 			$this->dataOwner = $config['dataOwner'];
 		} else {
-			throw new ConfigException( "Missing 'field' section." );
+			throw new ConfigException( "Missing 'dataOwner' section." );
 		}
 
 		if ( $config['mailchimp'] ) {
@@ -70,7 +72,7 @@ class Config {
 		if ( $config['fields'] ) {
 			$this->fields = $config['fields'];
 		} else {
-			throw new ConfigException( "Missing 'field' section." );
+			throw new ConfigException( "Missing 'fields' section." );
 		}
 	}
 
@@ -122,7 +124,7 @@ class Config {
 		     || empty( $this->dataOwner['email'] )
 		     || empty( $this->dataOwner['name'] )
 		) {
-			throw new ConfigException( "Missing CRM credentials." );
+			throw new ConfigException( "Missing data owner details." );
 		}
 
 		return $this->dataOwner;
@@ -185,13 +187,60 @@ class Config {
 	 */
 	public function getMailchimpKeyOfCrmId(): string {
 		foreach ( $this->getFieldMaps() as $map ) {
-			if ( 'id' === $map->getCrmKey() ) {
+			if ( self::CRM_ID_KEY === $map->getCrmKey() ) {
 				$keys = array_keys( $map->getMailchimpDataArray() );
 
 				return reset( $keys );
 			}
 		}
 
-		throw new ConfigException( 'Missing "id" field.' );
+		throw new ConfigException( 'Missing "' . self::CRM_ID_KEY . '" field.' );
+	}
+
+	public static function getCrmIdKey() {
+		return self::CRM_ID_KEY;
+	}
+
+	/**
+	 * Return true, if the given config is valid, else return array with error messages
+	 *
+	 * @return bool
+	 */
+	public function isValid(): bool {
+		$methods = [
+			'getCrmCredentials',
+			'getDataOwner',
+			'getFieldMaps',
+			'getMailchimpCredentials',
+			'getMailchimpKeyOfCrmId',
+			'getMailchimpListId'
+		];
+
+		$this->errors = [];
+		foreach ( $methods as $method ) {
+			// we throw errors and catch them, because one can also change the config
+			// while the endpoint is already established, so the validation is not
+			// necessarily executed.
+			try {
+				$this->$method();
+			} catch ( ConfigException $e ) {
+				$this->errors[] = $e->getMessage();
+			}
+		}
+
+		return empty( $this->errors );
+	}
+
+	/**
+	 * Return the validation errors of this config
+	 *
+	 * @return array
+	 */
+	public function getErrors(): array {
+		if ( is_null( $this->errors ) ) {
+			$this->isValid();
+		}
+
+		return $this->errors;
 	}
 }

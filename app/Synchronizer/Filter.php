@@ -8,8 +8,6 @@ use App\Synchronizer\Mapper\FieldMapFacade;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 
 class Filter {
-	private const CRM_ID_KEY = 'id';
-
 	private const CRM_RECORD_STATUS_KEY = 'recordStatus';
 	private const CRM_RECORD_STATUS_ACTIVE = 'active';
 
@@ -92,10 +90,12 @@ class Filter {
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 */
 	private function filterSingle( array $record ): bool {
+		$crmIdKey = Config::getCrmIdKey();
+
 		// record status
 		$status = $record[ self::CRM_RECORD_STATUS_KEY ];
 		if ( $status !== self::CRM_RECORD_STATUS_ACTIVE ) {
-			$this->rejected[ $record[ self::CRM_ID_KEY ] ] = $record;
+			$this->rejected[ $record[ $crmIdKey ] ] = $record;
 
 			return false;
 		}
@@ -103,7 +103,7 @@ class Filter {
 		// valid email
 		$email = $record[ $this->getEmailKey() ];
 		if ( empty( $email ) || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
-			$this->rejected[ $record[ self::CRM_ID_KEY ] ] = $record;
+			$this->rejected[ $record[ $crmIdKey ] ] = $record;
 
 			return false;
 		}
@@ -111,7 +111,7 @@ class Filter {
 		// email status
 		$emailStatus = $record[ self::CRM_EMAIL_STATUS_KEY ];
 		if ( $emailStatus !== self::CRM_EMAIL_STATUS_ACTIVE ) {
-			$this->rejected[ $record[ self::CRM_ID_KEY ] ] = $record;
+			$this->rejected[ $record[ $crmIdKey ] ] = $record;
 
 			return false;
 		}
@@ -168,7 +168,7 @@ class Filter {
 			}
 		}
 
-		$this->rejected[ $record[ self::CRM_ID_KEY ] ] = $record;
+		$this->rejected[ $record[ Config::getCrmIdKey() ] ] = $record;
 
 		return false;
 	}

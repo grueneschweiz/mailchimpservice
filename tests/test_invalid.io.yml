@@ -1,0 +1,9 @@
+auth:
+  mailchimp: asdf
+  crm: asdf
+dataOwner: asdf
+mailchimp: asdf
+fields:
+  - crmKey: email1
+    type: email
+    sync: both
