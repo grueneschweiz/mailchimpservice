@@ -147,7 +147,12 @@ class MailchimpToCrmSynchronizer {
 				) );
 		}
 
-		$this->crmClient->put( 'member/' . $crmId, $crmData );
+		$putData = [];
+		foreach ( $crmData as $key => $value ) {
+			$putData[ $key ] = [ 'value' => $value, 'mode' => 'replace' ];
+		}
+
+		$this->crmClient->put( 'member/' . $crmId, $putData );
 
 		Log::debug( sprintf(
 			"Sync successful (record id: %d)",

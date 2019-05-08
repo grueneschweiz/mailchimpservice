@@ -186,10 +186,10 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$data = json_decode( (string) $put->getBody(), true );
 
 		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
-		$this->assertEquals( 'no', $data['newsletterCountryD'] );
-		$this->assertEquals( 'no', $data['newsletterCountryF'] );
-		$this->assertEquals( 'no', $data['pressReleaseCountryD'] );
-		$this->assertEquals( 'no', $data['pressReleaseCountryF'] );
+		$this->assertEquals( 'no', $data['newsletterCountryD']['value'] );
+		$this->assertEquals( 'no', $data['newsletterCountryF']['value'] );
+		$this->assertEquals( 'no', $data['pressReleaseCountryD']['value'] );
+		$this->assertEquals( 'no', $data['pressReleaseCountryF']['value'] );
 	}
 
 	public function testSyncSingle__bounced() {
@@ -226,9 +226,9 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$data = json_decode( (string) $put->getBody(), true );
 
 		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
-		$this->assertEquals( 'invalid', $data['emailStatus'] );
-		$this->assertStringContainsString( 'Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry'] );
-		$this->assertStringContainsString( $member['notesCountry'], $data['notesCountry'] );
+		$this->assertEquals( 'invalid', $data['emailStatus']['value'] );
+		$this->assertStringContainsString( 'Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry']['value'] );
+		$this->assertStringContainsString( $member['notesCountry'], $data['notesCountry']['value'] );
 	}
 
 	public function testSyncSingle__updated() {
@@ -284,10 +284,10 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$data = json_decode( (string) $put->getBody(), true );
 
 		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
-		$this->assertEquals( 'yes', $data['newsletterCountryD'] );
-		$this->assertEquals( 'no', $data['newsletterCountryF'] );
-		$this->assertEquals( 'yes', $data['pressReleaseCountryD'] );
-		$this->assertEquals( 'no', $data['pressReleaseCountryF'] );
+		$this->assertEquals( 'yes', $data['newsletterCountryD']['value'] );
+		$this->assertEquals( 'no', $data['newsletterCountryF']['value'] );
+		$this->assertEquals( 'yes', $data['pressReleaseCountryD']['value'] );
+		$this->assertEquals( 'no', $data['pressReleaseCountryF']['value'] );
 
 		// cleanup
 		$this->mcClientTesting->deleteSubscriber( $email );
@@ -341,7 +341,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$data = json_decode( (string) $put->getBody(), true );
 
 		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
-		$this->assertEquals( $newEmail, $data['email1'] );
+		$this->assertEquals( $newEmail, $data['email1']['value'] );
 	}
 
 	private function getMember( $crmId, $email ) {
