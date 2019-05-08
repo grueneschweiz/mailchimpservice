@@ -100,8 +100,6 @@ class Sync extends Command {
 
 			try {
 				$sync->syncAllChanges( (int) $limit, (int) $offset ); // this is the relevant line! the rest is error handling...
-
-				$this->info( 'First batch synced successfully, subsequent batches are running in detached mode.' );
 			} catch ( ParseCrmDataException $e ) {
 				$this->error( 'ParseCrmDataException: ' . $e->getMessage() );
 				$this->error( $e->getFile() . ' on line ' . $e->getLine() . "\n" . $e->getTraceAsString(), 'v' );
