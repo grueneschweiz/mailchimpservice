@@ -24,9 +24,16 @@ Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'api' ] ], function () {
 	Route::group( [ 'prefix' => 'mailchimp' ], function () {
 		Route::post( 'webhook/{secret}', function ( Request $request, string $secret ) {
 			$controller = new RestController();
-			$controller->handle( $request, $secret );
+			$controller->handlePost( $request, $secret );
 
 			return response()->setStatusCode( 200 );
+		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
+
+		Route::get( 'webhook/{secret}', function ( Request $request, string $secret ) {
+			$controller = new RestController();
+			$controller->handleGet( $secret );
+
+			return response()->setStatusCode( 204 );
 		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
 	} );
 } );

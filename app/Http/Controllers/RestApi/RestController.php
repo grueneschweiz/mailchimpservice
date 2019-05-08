@@ -7,7 +7,7 @@ use App\Synchronizer\MailchimpToCrmSynchronizer;
 use Illuminate\Http\Request;
 
 class RestController {
-	public function handle( Request $request, string $secret ) {
+	public function handlePost( Request $request, string $secret ) {
 		/** @var MailchimpEndpoint|null $endpoint */
 		$endpoint = MailchimpEndpoint::where( 'secret', $secret )->first();
 
@@ -17,5 +17,14 @@ class RestController {
 
 		$sync = new MailchimpToCrmSynchronizer( $endpoint->config );
 		$sync->syncSingle( $request->post() );
+	}
+
+	public function handleGet( string $secret ) {
+		/** @var MailchimpEndpoint|null $endpoint */
+		$endpoint = MailchimpEndpoint::where( 'secret', $secret )->first();
+
+		if ( ! $endpoint ) {
+			abort( 401, 'Invalid secret.' );
+		}
 	}
 }
