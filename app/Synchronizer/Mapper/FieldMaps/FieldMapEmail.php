@@ -38,7 +38,7 @@ class FieldMapEmail extends FieldMap {
 	 * @throws ParseMailchimpDataException
 	 */
 	public function addMailchimpData( array $data ) {
-		if ( ! isset( $data[ self::MAILCHIMP_FIELD_KEY ] ) ) {
+		if ( ! array_key_exists( self::MAILCHIMP_FIELD_KEY, $data ) ) {
 			throw new ParseMailchimpDataException( sprintf( "Missing key '%s'", self::MAILCHIMP_PARENT_KEY ) );
 		}
 
@@ -57,7 +57,7 @@ class FieldMapEmail extends FieldMap {
 	 * @throws ParseCrmDataException
 	 */
 	public function addCrmData( array $data ) {
-		if ( ! isset( $data[ $this->crmKey ] ) ) {
+		if ( ! array_key_exists( $this->crmKey, $data ) ) {
 			throw new ParseCrmDataException( sprintf( "Missing key '%s'", $this->crmKey ) );
 		}
 

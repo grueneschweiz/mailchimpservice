@@ -52,7 +52,7 @@ class FieldMapAutotag extends FieldMap {
 	 * @throws ParseCrmDataException
 	 */
 	public function addCrmData( array $data ) {
-		if ( ! isset( $data[ $this->crmKey ] ) ) {
+		if ( ! array_key_exists( $this->crmKey, $data ) ) {
 			throw new ParseCrmDataException( sprintf( "Missing key '%s'", $this->crmKey ) );
 		}
 

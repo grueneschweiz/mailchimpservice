@@ -59,11 +59,11 @@ class FieldMapGroup extends FieldMap {
 	 * @throws ParseMailchimpDataException
 	 */
 	public function addMailchimpData( array $data ) {
-		if ( ! isset( $data[ self::MAILCHIMP_PARENT_KEY ] ) ) {
+		if ( ! array_key_exists( self::MAILCHIMP_PARENT_KEY, $data ) ) {
 			throw new ParseMailchimpDataException( sprintf( "Missing key '%s'", self::MAILCHIMP_PARENT_KEY ) );
 		}
 
-		if ( ! isset( $data[ self::MAILCHIMP_PARENT_KEY ][ $this->mailchimpCategoryId ] ) ) {
+		if ( ! array_key_exists( $this->mailchimpCategoryId, $data[ self::MAILCHIMP_PARENT_KEY ] ) ) {
 			throw new ParseMailchimpDataException( sprintf(
 				"The interest (also called group or category) with the id '%s' does not exist in mailchimp.",
 				$this->mailchimpCategoryId
@@ -84,7 +84,7 @@ class FieldMapGroup extends FieldMap {
 	 * @throws ParseCrmDataException
 	 */
 	public function addCrmData( array $data ) {
-		if ( ! isset( $data[ $this->crmKey ] ) ) {
+		if ( ! array_key_exists( $this->crmKey, $data ) ) {
 			throw new ParseCrmDataException( sprintf( "Missing key '%s'", $this->crmKey ) );
 		}
 
