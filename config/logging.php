@@ -34,8 +34,8 @@ return [
 
     'channels' => [
         'stack' => [
-            'driver' => 'stack',
-            'channels' => ['single'],
+	        'driver'   => 'stack',
+	        'channels' => [ 'single', 'slack' ],
         ],
 
         'single' => [
@@ -52,11 +52,11 @@ return [
         ],
 
         'slack' => [
-            'driver' => 'slack',
-            'url' => env('LOG_SLACK_WEBHOOK_URL'),
-            'username' => 'Laravel Log',
-            'emoji' => ':boom:',
-            'level' => 'critical',
+	        'driver'   => 'slack',
+	        'url'      => env('LOG_SLACK_WEBHOOK_URL'),
+	        'username' => 'Milchimp Service',
+	        'emoji'    => ':postal_horn:',
+	        'level'    => 'notice',
         ],
 
         'stderr' => [
