@@ -89,7 +89,7 @@ class Filter {
 	 *
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 */
-	private function filterSingle( array $record ): bool {
+	public function filterSingle( array $record ): bool {
 		$crmIdKey = Config::getCrmIdKey();
 
 		// record status

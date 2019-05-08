@@ -6,6 +6,7 @@ namespace App\Synchronizer;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\OAuthClient;
+use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -56,6 +57,16 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$c->setAccessible( true );
 		$c->setValue( $this->sync, $config );
 
+		// add filter
+		$filter = new \ReflectionProperty( $this->sync, 'filter' );
+		$filter->setAccessible( true );
+		$filter->setValue( $this->sync, new Filter( $config->getFieldMaps(), $config->getSyncAll() ) );
+
+		// add filter
+		$mapper = new \ReflectionProperty( $this->sync, 'mapper' );
+		$mapper->setAccessible( true );
+		$mapper->setValue( $this->sync, new Mapper( $config->getFieldMaps() ) );
+
 		// replace the mailchimp client with one with secure but real credentials
 		$mailchimpClient = new \ReflectionProperty( $this->sync, 'mailchimpClient' );
 		$mailchimpClient->setAccessible( true );
@@ -97,15 +108,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				1 => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				1 => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [
 				2 => $member2
 			] ) ),
-			new Response( 200, [], json_encode( [
-				2 => $member2
-			] ) ),
+			new Response( 200, [], json_encode( $member2 ) ),
 			new Response( 200, [], json_encode( [
 				3 => null
 			] ) ),
@@ -146,15 +153,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				1 => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				1 => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [
 				2 => $member2
 			] ) ),
-			new Response( 200, [], json_encode( [
-				2 => $member2
-			] ) ),
+			new Response( 200, [], json_encode( $member2 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 
@@ -185,9 +188,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				1 => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				1 => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 
@@ -204,9 +205,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				1 => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				1 => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 
@@ -232,9 +231,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				$member1['id'] => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				$member1['id'] => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 
@@ -254,9 +251,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [
 				$member1['id'] => $member1
 			] ) ),
-			new Response( 200, [], json_encode( [
-				$member1['id'] => $member1
-			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 

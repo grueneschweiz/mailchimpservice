@@ -34,6 +34,16 @@ class CrmToMailchimpSynchronizer {
 	private $mailchimpClient;
 
 	/**
+	 * @var Filter
+	 */
+	private $filter;
+
+	/**
+	 * @var Mapper
+	 */
+	private $mapper;
+
+	/**
 	 * Synchronizer constructor.
 	 *
 	 * @param string $configFileName file name of the config file
@@ -50,6 +60,9 @@ class CrmToMailchimpSynchronizer {
 
 		$mcCred                = $this->config->getMailchimpCredentials();
 		$this->mailchimpClient = new MailChimpClient( $mcCred['apikey'], $this->config->getMailchimpListId() );
+
+		$this->filter = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
+		$this->mapper = new Mapper( $this->config->getFieldMaps() );
 	}
 
 	/**
@@ -85,11 +98,6 @@ class CrmToMailchimpSynchronizer {
 			$this->openNewRevision();
 		}
 
-		$filter = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
-		$mapper = new Mapper( $this->config->getFieldMaps() );
-
-		$mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
-
 		while ( true ) {
 			// get changed members
 			$get     = $this->crmClient->get( "member/changed/$revId/$limit/$offset" );
@@ -97,64 +105,17 @@ class CrmToMailchimpSynchronizer {
 
 			// base case: everything worked well. update revision id
 			if ( empty( $crmData ) ) {
+				Log::debug( "Everything synced." );
 				$this->closeOpenRevision();
-
-				Log::debug( sprintf(
-					"Sync for config %s successful.",
-					$this->configName
-				) );
+				Log::debug( "Sync for config {$this->configName} successful." );
 
 				return;
 			}
 
+			// sync members to mailchimp
 			foreach ( $crmData as $crmId => $record ) {
-				// delete the once that were deleted in the crm
-				if ( null === $record ) {
-					$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
-
-					if ( $email ) {
-						$this->mailchimpClient->deleteSubscriber( $email );
-					}
-
-					unset( $crmData[ $crmId ] );
-					continue;
-				}
-
-				// get the master record
-				$get  = $this->crmClient->get( "member/$crmId/main" );
-				$main = json_decode( (string) $get->getBody(), true );
-				unset( $crmData[ $crmId ] );
-				$crmData += $main;
-			}
-
-			// only process the relevant datasets
-			$relevantRecords = $filter->filter( $crmData );
-
-			// handle records already subscribed to mailchimp
-			// where the email address has changed in the crm
-			foreach ( $relevantRecords as $crmId => $crmRecord ) {
-				$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
-				if ( $email && $email !== $crmRecord['email1'] ) {
-					$mcRecord = $mapper->crmToMailchimp( $crmRecord );
-					$this->mailchimpClient->putSubscriber( $mcRecord, $email );
-				}
-			}
-
-			// map crm data to mailchimp data and store them in mailchimp
-			// don't use mailchimps batch operations, because they are async
-			foreach ( $relevantRecords as $crmRecord ) {
-				$mcRecord           = $mapper->crmToMailchimp( $crmRecord );
-				$mcRecord['status'] = 'subscribed'; // handles re-subscriptions
-				$this->mailchimpClient->putSubscriber( $mcRecord ); // let it fail hard, for the moment
-			}
-
-			// remove all subscribers that unsubscribed via crm
-			$rejectedRecords = $filter->getRejected();
-			foreach ( $rejectedRecords as $crmId => $record ) {
-				$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
-				if ( $email ) {
-					$this->mailchimpClient->deleteSubscriber( $email );
-				}
+				// don't use mailchimps batch operations, because they are async
+				$this->syncSingle( $crmId, $record );
 			}
 
 			Log::debug( sprintf(
@@ -167,6 +128,73 @@ class CrmToMailchimpSynchronizer {
 			// get next batch
 			$offset += $limit;
 		}
+	}
+
+	/**
+	 * @param int $crmId
+	 * @param array|null $crmData
+	 *
+	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseCrmDataException
+	 * @throws \Exception
+	 */
+	private function syncSingle( int $crmId, $crmData ) {
+		Log::debug( "Start syncing record with id: $crmId" );
+
+		$mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
+
+		// if the record was deleted in the crm
+		if ( null === $crmData ) {
+			Log::debug( "Record was deleted in crm." );
+
+			$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
+
+			if ( $email ) {
+				$this->mailchimpClient->deleteSubscriber( $email );
+				Log::debug( "Record deleted in mailchimp." );
+			} else {
+				Log::debug( "Record not present in mailchimp." );
+			}
+
+			return;
+		}
+
+		// get the master record
+		$get    = $this->crmClient->get( "member/$crmId/main" );
+		$main   = json_decode( (string) $get->getBody(), true );
+		$mainId = $main[ Config::getCrmIdKey() ];
+		$email  = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $mainId, $mcCrmIdFieldKey );
+		if ( $crmId !== $mainId ) {
+			Log::debug( "Got main record. ID: $mainId" );
+		}
+
+		// remove all subscribers that unsubscribed via crm
+		if ( ! $this->filter->filterSingle( $main ) ) {
+			if ( $email ) {
+				$this->mailchimpClient->deleteSubscriber( $email );
+				Log::debug( "Filter criteria not met: Record deleted in Mailchimp." );
+			} else {
+				Log::debug( "Filter criteria not met: Record not present in Mailchimp." );
+			}
+
+			return;
+		}
+
+		$mcRecord = $this->mapper->crmToMailchimp( $main );
+
+		// handle records already subscribed to mailchimp
+		// where the email address has changed in the crm
+		if ( $email && $email !== $main['email1'] ) {
+			$this->mailchimpClient->putSubscriber( $mcRecord, $email );
+			Log::debug( "Email address has changed in crm. Updated record in mailchimp." );
+
+			return;
+		}
+
+		// map crm data to mailchimp data and store them in mailchimp
+		$mcRecord['status'] = 'subscribed'; // handles re-subscriptions
+		$this->mailchimpClient->putSubscriber( $mcRecord );
+		Log::debug( "Record synchronized to mailchimp." );
 	}
 
 	/**
