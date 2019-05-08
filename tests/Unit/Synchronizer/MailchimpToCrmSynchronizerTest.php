@@ -185,7 +185,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$put  = $this->crmRequestHistory[1]['request'];
 		$data = json_decode( (string) $put->getBody(), true );
 
-		$this->assertEquals( "/member/$crmId", $put->getUri()->getPath() );
+		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
 		$this->assertEquals( 'no', $data['newsletterCountryD'] );
 		$this->assertEquals( 'no', $data['newsletterCountryF'] );
 		$this->assertEquals( 'no', $data['pressReleaseCountryD'] );
@@ -225,7 +225,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$put  = $this->crmRequestHistory[1]['request'];
 		$data = json_decode( (string) $put->getBody(), true );
 
-		$this->assertEquals( "/member/$crmId", $put->getUri()->getPath() );
+		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
 		$this->assertEquals( 'invalid', $data['emailStatus'] );
 		$this->assertStringContainsString( 'Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry'] );
 		$this->assertStringContainsString( $member['notesCountry'], $data['notesCountry'] );
@@ -283,7 +283,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$put  = $this->crmRequestHistory[0]['request'];
 		$data = json_decode( (string) $put->getBody(), true );
 
-		$this->assertEquals( "/member/$crmId", $put->getUri()->getPath() );
+		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
 		$this->assertEquals( 'yes', $data['newsletterCountryD'] );
 		$this->assertEquals( 'no', $data['newsletterCountryF'] );
 		$this->assertEquals( 'yes', $data['pressReleaseCountryD'] );
@@ -340,7 +340,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$put  = $this->crmRequestHistory[0]['request'];
 		$data = json_decode( (string) $put->getBody(), true );
 
-		$this->assertEquals( "/member/$crmId", $put->getUri()->getPath() );
+		$this->assertEquals( "member/$crmId", $put->getUri()->getPath() );
 		$this->assertEquals( $newEmail, $data['email1'] );
 	}
 

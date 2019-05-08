@@ -104,7 +104,7 @@ class MailchimpToCrmSynchronizer {
 				// get contact from crm
 				// set all subscriptions, that are configured in this config to NO
 				$crmId   = $mcData['data']['merges'][ $this->config->getMailchimpKeyOfCrmId() ];
-				$get     = $this->crmClient->get( '/member/' . $crmId );
+				$get     = $this->crmClient->get( 'member/' . $crmId );
 				$crmData = json_decode( (string) $get->getBody(), true );
 				$crmData = $this->unsubscribeAll( $crmData );
 				Log::debug( 'MC_UNSUBSCRIBE: Unsubscribe member in crm.' );
@@ -114,7 +114,7 @@ class MailchimpToCrmSynchronizer {
 				// set email1 to invalid
 				// add note 'email set to invalid because it bounced in mailchimp'
 				$crmId                   = $mcData['data']['merges'][ $this->config->getMailchimpKeyOfCrmId() ];
-				$get                     = $this->crmClient->get( '/member/' . $crmId );
+				$get                     = $this->crmClient->get( 'member/' . $crmId );
 				$crmData                 = json_decode( (string) $get->getBody(), true );
 				$crmData['emailStatus']  = 'invalid';
 				$crmData['notesCountry'] .= sprintf( "\n%s: Mailchimp reported the email as invalid. Email status changed.", date( 'Y-m-d H:i' ) );
@@ -147,7 +147,7 @@ class MailchimpToCrmSynchronizer {
 				) );
 		}
 
-		$this->crmClient->put( '/member/' . $crmId, $crmData );
+		$this->crmClient->put( 'member/' . $crmId, $crmData );
 
 		Log::debug( sprintf(
 			"Sync successful (record id: %d)",
