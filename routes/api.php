@@ -26,14 +26,14 @@ Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'api' ] ], function () {
 			$controller = new RestController();
 			$controller->handlePost( $request, $secret );
 
-			return response()->setStatusCode( 200 );
+			return response( '', 204 );
 		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
 
 		Route::get( 'webhook/{secret}', function ( Request $request, string $secret ) {
 			$controller = new RestController();
 			$controller->handleGet( $secret );
 
-			return response()->setStatusCode( 204 );
+			return response( '', 204 );
 		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
 	} );
 } );
