@@ -26,7 +26,13 @@ class MessageLoggedListener {
 	public function handle( MessageLogged $event ) {
 		if ( app()->runningInConsole() ) {
 			$output = new ConsoleOutput( OutputInterface::VERBOSITY_VERBOSE );
-			$output->writeln( "<{$event->level}>{$event->message}</{$event->level}>" );
+
+			$tag = 'error';
+			if ( in_array( $event->level, [ 'notice', 'info', 'debug' ] ) ) {
+				$tag = 'info';
+			}
+
+			$output->writeln( "<$tag>{$event->message}</$tag>" );
 		}
 	}
 }
