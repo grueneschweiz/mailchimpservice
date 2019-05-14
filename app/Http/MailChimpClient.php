@@ -170,7 +170,92 @@ class MailChimpClient {
 			throw new \Exception( "Put request against Mailchimp failed (status code: {$put['status']}): {$put['detail']}" );
 		}
 
+		// this is needed for updates
+		$this->updateSubscribersTags( $id, $mcData['tags'] );
+
 		return $put;
+	}
+
+	/**
+	 * Update tags of subscriber
+	 *
+	 * This must be done extra, because mailchimp doesn't allow to change the tags on subscriber update
+	 *
+	 * @param string $id
+	 * @param array $new the tags the subscriber should have
+	 *
+	 * @throws \Exception
+	 */
+	private function updateSubscribersTags( string $id, array $new ) {
+		$get = $this->getSubscriberTags( $id );
+
+		$current = array_column( $get['tags'], 'name' );
+
+		$update = [];
+		foreach ( $current as $currentTag ) {
+			if ( ! in_array( $currentTag, $new ) ) {
+				$update[] = (object) [ 'name' => $currentTag, 'status' => 'inactive' ];
+			}
+		}
+
+		foreach ( $new as $newTag ) {
+			if ( ! in_array( $newTag, $current ) ) {
+				$update[] = (object) [ 'name' => $newTag, 'status' => 'active' ];
+			}
+		}
+
+		if ( empty( $update ) ) {
+			return;
+		}
+
+		$this->postSubscriberTags( $id, [ 'tags' => $update ] );
+	}
+
+	/**
+	 * Get subscriber tags
+	 *
+	 * @param string $id
+	 *
+	 * @return array|false
+	 * @throws \Exception
+	 */
+	private function getSubscriberTags( string $id ) {
+		$get = $this->client->get( "lists/{$this->listId}/members/$id/tags" );
+
+		if ( ! $get ) {
+			throw new \Exception( "Get tags request against Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
+			throw new \Exception( "Get tags request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
+		}
+
+		return $get;
+	}
+
+	/**
+	 * Update subscriber tags
+	 *
+	 * @param string $id
+	 * @param array $tags the tags that should be activated and the ones that should be deactivated
+	 *
+	 * @return array|false
+	 * @throws \Exception
+	 * @see https://developer.mailchimp.com/documentation/mailchimp/reference/lists/members/tags/#%20
+	 *
+	 */
+	private function postSubscriberTags( string $id, array $tags ) {
+		$post = $this->client->post( "lists/{$this->listId}/members/$id/tags", $tags );
+
+		if ( ! $post ) {
+			throw new \Exception( "Post tags request to Mailchimp failed: {$this->client->getLastError()}" );
+		}
+
+		if ( isset( $post['status'] ) && is_numeric( $post['status'] ) && $post['status'] !== 200 ) {
+			throw new \Exception( "Post tags request against Mailchimp failed (status code: {$post['status']}): {$post['detail']}" );
+		}
+
+		return $post;
 	}
 
 	/**

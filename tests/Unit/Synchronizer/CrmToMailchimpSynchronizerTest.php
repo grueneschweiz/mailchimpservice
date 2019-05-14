@@ -219,6 +219,61 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->mcClientTesting->deleteSubscriber( $member1['email1'] );
 	}
 
+	public function testSyncAllChanges_tag_change() {
+		// precondition
+		$revisionId = 126;
+
+		$id      = random_int( 999999, 9999999 );
+		$email   = str_random() . '@mymail.com';
+		$member1 = $this->getMember( $id, $email );
+
+		// make sure there is no member with this id
+		try {
+			$email = $this->mcClientTesting->getSubscriberEmailByCrmId( $id, 'id' );
+			$this->mcClientTesting->deleteSubscriber( $email );
+		} catch ( \Exception $e ) {
+		}
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				$id => $member1
+			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber1 = $this->mcClientTesting->getSubscriber( $email );
+		$this->assertNotEmpty( $subscriber1 );
+
+		// the test
+		$member1['memberStatusCountry'] = 'sympathizer';
+		$member1['interests']           = [ 'climate', 'agriculture' ];
+
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
+			new Response( 200, [], json_encode( [
+				$id => $member1
+			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		$subscriber2 = $this->mcClientTesting->getSubscriber( $email );
+		$tags        = array_column( $subscriber2['tags'], 'name' );
+
+		$this->assertTrue( in_array( 'climate', $tags ) );
+		$this->assertTrue( in_array( 'agriculture', $tags ) );
+		$this->assertFalse( in_array( 'energy', $tags ) );
+
+		// cleanup
+		$this->mcClientTesting->deleteSubscriber( $email );
+	}
+
 	public function testSyncAllChanges_resubscribe() {
 		// precondition
 		$revisionId = 127;
