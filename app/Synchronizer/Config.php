@@ -17,6 +17,7 @@ class Config {
 	private $dataOwner;
 	private $mailchimp;
 	private $errors;
+	private $crmEmailKey;
 
 	/**
 	 * Config constructor.
@@ -200,6 +201,28 @@ class Config {
 
 	public static function getCrmIdKey() {
 		return self::CRM_ID_KEY;
+	}
+
+	/**
+	 * Return the field key in the crm that corresponds to the email field
+	 *
+	 * @return string
+	 * @throws ConfigException
+	 */
+	public function getCrmEmailKey(): string {
+		if ( $this->crmEmailKey ) {
+			return $this->crmEmailKey;
+		}
+
+		foreach ( $this->getFieldMaps() as $map ) {
+			if ( $map->isEmail() ) {
+				$this->crmEmailKey = $map->getCrmKey();
+
+				return $this->crmEmailKey;
+			}
+		}
+
+		throw new ConfigException( 'Missing email field.' );
 	}
 
 	/**

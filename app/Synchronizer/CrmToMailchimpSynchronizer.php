@@ -142,19 +142,25 @@ class CrmToMailchimpSynchronizer {
 		Log::debug( "Start syncing record with id: $crmId" );
 
 		$mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
+		$mcEmail         = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
 
 		// if the record was deleted in the crm
 		if ( null === $crmData ) {
 			Log::debug( "Record was deleted in crm." );
 
-			$email = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $crmId, $mcCrmIdFieldKey );
-
-			if ( $email ) {
-				$this->mailchimpClient->deleteSubscriber( $email );
+			if ( $mcEmail ) {
+				$this->mailchimpClient->deleteSubscriber( $mcEmail );
 				Log::debug( "Record deleted in mailchimp." );
 			} else {
 				Log::debug( "Record not present in mailchimp." );
 			}
+
+			return;
+		}
+
+		// skip if record has no email address and isn't in mailchimp yet
+		if ( ! $mcEmail && empty( $crmData[ $this->config->getCrmEmailKey() ] ) ) {
+			Log::debug( "Record skipped (not in mailchimp and has no email address)." );
 
 			return;
 		}

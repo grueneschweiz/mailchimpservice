@@ -49,6 +49,10 @@ class ConfigTest extends TestCase {
 		}
 	}
 
+	public function testGetCrmEmailKey() {
+		$this->assertEquals( 'email1', $this->config->getCrmEmailKey() );
+	}
+
 	public function testSyncAll() {
 		$this->assertFalse( $this->config->getSyncAll() );
 	}
