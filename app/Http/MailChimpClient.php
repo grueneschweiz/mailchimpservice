@@ -104,7 +104,7 @@ class MailChimpClient {
 	 * @throws \Exception
 	 */
 	private function getAllSubscribers( string $crmIdKey ): array {
-		if ( $this->subscribers ) {
+		if ( null !== $this->subscribers ) {
 			return $this->subscribers;
 		}
 
@@ -130,6 +130,10 @@ class MailChimpClient {
 			}
 
 			$offset += self::MC_GET_LIMIT;
+		}
+
+		if ( ! $this->subscribers ) {
+			$this->subscribers = [];
 		}
 
 		return $this->subscribers;
