@@ -6,7 +6,7 @@ use App\Exceptions\InvalidEmailException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
-	private const MC_GET_LIMIT = 100;
+	private const MC_GET_LIMIT = 1000;
 
 	/**
 	 * The Mailchimp client object
@@ -112,7 +112,7 @@ class MailChimpClient {
 		$offset = 0;
 
 		while ( true ) {
-			$get = $this->client->get( "lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset" );
+			$get = $this->client->get( "lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset", [], 30 );
 
 			if ( ! $get ) {
 				throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
