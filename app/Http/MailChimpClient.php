@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Exceptions\InvalidEmailException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
@@ -148,6 +149,7 @@ class MailChimpClient {
 	 * @return array|false
 	 * @throws \Exception
 	 * @throws \InvalidArgumentException
+	 * @throws InvalidEmailException
 	 */
 	public function putSubscriber( array $mcData, string $email = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
@@ -171,6 +173,10 @@ class MailChimpClient {
 		}
 
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
+			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'please enter a real email address' ) ) {
+				throw new InvalidEmailException( $put['status'] );
+			}
+
 			throw new \Exception( "Put request against Mailchimp failed (status code: {$put['status']}): {$put['detail']}" );
 		}
 

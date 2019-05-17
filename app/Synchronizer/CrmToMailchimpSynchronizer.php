@@ -4,6 +4,7 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\InvalidEmailException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
@@ -191,16 +192,24 @@ class CrmToMailchimpSynchronizer {
 		// handle records already subscribed to mailchimp
 		// where the email address has changed in the crm
 		if ( $email && $email !== $main['email1'] ) {
-			$this->mailchimpClient->putSubscriber( $mcRecord, $email );
-			Log::debug( "Email address has changed in crm. Updated record in mailchimp." );
+			try {
+				$this->mailchimpClient->putSubscriber( $mcRecord, $email );
+				Log::debug( "Email address has changed in crm. Updated record in mailchimp." );
+			} catch ( InvalidEmailException $e ) {
+				Log::info( "Email address has changed in crm to an INVALID EMAIL. Not updated in Mailchimp." );
+			}
 
 			return;
 		}
 
 		// map crm data to mailchimp data and store them in mailchimp
 		$mcRecord['status'] = 'subscribed'; // handles re-subscriptions
-		$this->mailchimpClient->putSubscriber( $mcRecord );
-		Log::debug( "Record synchronized to mailchimp." );
+		try {
+			$this->mailchimpClient->putSubscriber( $mcRecord );
+			Log::debug( "Record synchronized to mailchimp." );
+		} catch ( InvalidEmailException $e ) {
+			Log::info( "INVALID EMAIL. Record skipped." );
+		}
 	}
 
 	/**
@@ -217,8 +226,8 @@ class CrmToMailchimpSynchronizer {
 		$this->deleteOpenRevisions();
 
 		// get current revision id from crm
-		$get         = $this->crmClient->get( 'revision' );
-		$latestRevId = (int) json_decode( (string) $get->getBody() );
+		$get = $this->crmClient->get( 'revision' );
+		$latestRevId                = (int) json_decode( (string) $get->getBody() );
 
 		// add current revision
 		$latestRev                  = new Revision();
