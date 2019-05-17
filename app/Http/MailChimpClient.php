@@ -230,7 +230,8 @@ class MailChimpClient {
 	 * @throws \Exception
 	 */
 	private function getSubscriberTags( string $id ) {
-		$get = $this->client->get( "lists/{$this->listId}/members/$id/tags" );
+		// somehow we had a lot of timeouts when requesting the tags, therefore we increased the timeout
+		$get = $this->client->get( "lists/{$this->listId}/members/$id/tags", [], 30 );
 
 		if ( ! $get ) {
 			throw new \Exception( "Get tags request against Mailchimp failed: {$this->client->getLastError()}" );
