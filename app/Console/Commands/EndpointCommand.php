@@ -85,6 +85,6 @@ abstract class EndpointCommand extends Command {
 	 * @return string
 	 */
 	protected function getNewEndpointSecret() {
-		return str_random( 22 ); // 64^22 > 2^128
+		return str_random( 22 ); // 62^22 > 2^128
 	}
 }
