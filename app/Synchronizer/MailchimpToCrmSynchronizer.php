@@ -102,7 +102,7 @@ class MailchimpToCrmSynchronizer {
 
 			case self::MC_UNSUBSCRIBE:
 				// get contact from crm
-				// set all subscriptions, that are configured in this config to NO
+				// set all subscriptions, that are configured in the currently loaded config file, to NO
 				$crmId   = $mcData['data']['merges'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$get     = $this->crmClient->get( 'member/' . $crmId );
 				$crmData = json_decode( (string) $get->getBody(), true );
