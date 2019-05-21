@@ -118,6 +118,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 				'294df36247' => true,
 				'633e3c8dd7' => false,
 			],
+			'tags'          => [],
 		];
 
 		$this->mcClientTesting->putSubscriber( $subscriber );
@@ -258,6 +259,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 				'294df36247' => true,
 				'633e3c8dd7' => false,
 			],
+			'tags'          => [],
 		];
 
 		$this->mcClientTesting->putSubscriber( $subscriber );
@@ -321,6 +323,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 				'294df36247' => true,
 				'633e3c8dd7' => false,
 			],
+			'tags'          => [],
 		];
 
 		$this->mcClientTesting->putSubscriber( $subscriber );
