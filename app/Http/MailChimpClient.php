@@ -195,8 +195,8 @@ class MailChimpClient {
 
 		$this->validateResponseStatus( 'PUT subscriber', $put );
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
-			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'please enter a real email address' ) ) {
-				throw new InvalidEmailException( $put['status'] );
+			if ( isset( $put['errors'] ) && 0 === strpos( $put['errors'][0]['message'], 'Invalid email address' ) ) {
+				throw new InvalidEmailException( $put['errors'][0]['message'] );
 			}
 		}
 		$this->validateResponseContent( 'PUT subscriber', $put );
