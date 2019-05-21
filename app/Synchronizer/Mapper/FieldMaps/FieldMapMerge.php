@@ -76,7 +76,8 @@ class FieldMapMerge extends FieldMap {
 		}
 
 		if ( ! empty( $data[ $this->crmKey ] ) ) {
-			$this->value = $data[ $this->crmKey ];
+			$clean       = trim( preg_replace( '/\s+/', ' ', $data[ $this->crmKey ] ) );
+			$this->value = $clean;
 		} else {
 			$this->value = $this->default;
 		}
