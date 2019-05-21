@@ -63,16 +63,38 @@ class MailChimpClient {
 		$id = self::calculateSubscriberId( $email );
 
 		$get = $this->client->get( "lists/{$this->listId}/members/$id" );
-
-		if ( ! $get ) {
-			throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
-		}
-
-		if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
-			throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
-		}
+		$this->validateResponseStatus( 'GET subscriber', $get );
+		$this->validateResponseContent( 'GET subscriber', $get );
 
 		return $get;
+	}
+
+	/**
+	 * Throw exception if we get a falsy response.
+	 *
+	 * @param string $method
+	 * @param $response
+	 *
+	 * @throws \Exception
+	 */
+	private function validateResponseStatus( string $method, $response ) {
+		if ( ! $response ) {
+			throw new \Exception( "$method request against Mailchimp failed: {$this->client->getLastError()}" );
+		}
+	}
+
+	/**
+	 * Throw exception if we get response with erroneous content.
+	 *
+	 * @param string $method
+	 * @param $response
+	 *
+	 * @throws \Exception
+	 */
+	private function validateResponseContent( string $method, $response ) {
+		if ( isset( $response['status'] ) && is_numeric( $response['status'] ) && $response['status'] !== 200 ) {
+			throw new \Exception( "$method request against Mailchimp failed (status code: {$response['status']}): {$response['detail']}" );
+		}
 	}
 
 	/**
@@ -114,13 +136,8 @@ class MailChimpClient {
 		while ( true ) {
 			$get = $this->client->get( "lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset", [], 30 );
 
-			if ( ! $get ) {
-				throw new \Exception( "Get request against Mailchimp failed: {$this->client->getLastError()}" );
-			}
-
-			if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
-				throw new \Exception( "Get request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
-			}
+			$this->validateResponseStatus( 'GET multiple subscribers', $get );
+			$this->validateResponseContent( 'GET multiple subscribers', $get );
 
 			if ( 0 === count( $get['members'] ) ) {
 				break;
@@ -168,17 +185,13 @@ class MailChimpClient {
 
 		$put = $this->client->put( "lists/{$this->listId}/members/$id", $mcData );
 
-		if ( ! $put ) {
-			throw new \Exception( "Put request to Mailchimp failed: {$this->client->getLastError()}" );
-		}
-
+		$this->validateResponseStatus( 'PUT subscriber', $put );
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
 			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'please enter a real email address' ) ) {
 				throw new InvalidEmailException( $put['status'] );
 			}
-
-			throw new \Exception( "Put request against Mailchimp failed (status code: {$put['status']}): {$put['detail']}" );
 		}
+		$this->validateResponseContent( 'PUT subscriber', $put );
 
 		// this is needed for updates
 		$this->updateSubscribersTags( $id, $mcData['tags'] );
@@ -233,13 +246,8 @@ class MailChimpClient {
 		// somehow we had a lot of timeouts when requesting the tags, therefore we increased the timeout
 		$get = $this->client->get( "lists/{$this->listId}/members/$id/tags", [], 30 );
 
-		if ( ! $get ) {
-			throw new \Exception( "Get tags request against Mailchimp failed: {$this->client->getLastError()}" );
-		}
-
-		if ( isset( $get['status'] ) && is_numeric( $get['status'] ) && $get['status'] !== 200 ) {
-			throw new \Exception( "Get tags request against Mailchimp failed (status code: {$get['status']}): {$get['detail']}" );
-		}
+		$this->validateResponseStatus( 'GET tags', $get );
+		$this->validateResponseContent( 'GET tags', $get );
 
 		return $get;
 	}
@@ -258,13 +266,8 @@ class MailChimpClient {
 	private function postSubscriberTags( string $id, array $tags ) {
 		$post = $this->client->post( "lists/{$this->listId}/members/$id/tags", $tags );
 
-		if ( ! $post ) {
-			throw new \Exception( "Post tags request to Mailchimp failed: {$this->client->getLastError()}" );
-		}
-
-		if ( isset( $post['status'] ) && is_numeric( $post['status'] ) && $post['status'] !== 200 ) {
-			throw new \Exception( "Post tags request against Mailchimp failed (status code: {$post['status']}): {$post['detail']}" );
-		}
+		$this->validateResponseStatus( 'POST tags', $post );
+		$this->validateResponseContent( 'POST tags', $post );
 
 		return $post;
 	}
@@ -280,13 +283,8 @@ class MailChimpClient {
 		$id     = self::calculateSubscriberId( $email );
 		$delete = $this->client->delete( "lists/{$this->listId}/members/$id" );
 
-		if ( ! $delete ) {
-			throw new \Exception( "Delete request to Mailchimp failed: {$this->client->getLastError()}" );
-		}
-
-		if ( isset( $delete['status'] ) && is_numeric( $delete['status'] ) && $delete['status'] !== 204 ) {
-			throw new \Exception( "Put request against Mailchimp failed (status code: {$delete['status']}): {$delete['detail']}" );
-		}
+		$this->validateResponseStatus( 'DELETE subscriber', $delete );
+		$this->validateResponseContent( 'DELETE subscriber', $delete );
 	}
 
 	/**
