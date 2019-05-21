@@ -172,7 +172,9 @@ class CrmToMailchimpSynchronizer {
 		$mainId = $main[ Config::getCrmIdKey() ];
 		$email  = $this->mailchimpClient->getSubscriberEmailByCrmId( (string) $mainId, $mcCrmIdFieldKey );
 		if ( $crmId !== $mainId ) {
-			Log::debug( "Got main record. ID: $mainId" );
+			Log::debug( "Found main record. ID: $mainId" );
+		} else {
+			Log::debug( "This record seems to be the main record." );
 		}
 
 		// remove all subscribers that unsubscribed via crm
