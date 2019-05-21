@@ -230,6 +230,11 @@ class MailChimpClient {
 		}
 
 		foreach ( $new as $newTag ) {
+			// if we update a subscriber our $new array is two dimensional
+			// if we insert, the $new array simply contains the tags
+			if ( is_array( $newTag ) ) {
+				$newTag = $newTag['name'];
+			}
 			if ( ! in_array( $newTag, $current ) ) {
 				$update[] = (object) [ 'name' => $newTag, 'status' => 'active' ];
 			}
