@@ -19,6 +19,11 @@ class RestController {
 		$sync->syncSingle( $request->post() );
 	}
 
+	/**
+	 * To add a webhook in Mailchimp, Mailchimp must be able to make a successful GET request to the given address.
+	 *
+	 * @param string $secret
+	 */
 	public function handleGet( string $secret ) {
 		/** @var MailchimpEndpoint|null $endpoint */
 		$endpoint = MailchimpEndpoint::where( 'secret', $secret )->first();
