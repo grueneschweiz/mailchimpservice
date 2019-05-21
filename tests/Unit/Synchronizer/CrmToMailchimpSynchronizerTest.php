@@ -3,6 +3,7 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\InvalidEmailException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\OAuthClient;
@@ -232,7 +233,10 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			new Response( 200, [], json_encode( [] ) ),
 		] );
 
-		$this->sync->syncAllChanges( 1, 0 );
+		try {
+			$this->sync->syncAllChanges( 1, 0 );
+		} catch ( InvalidEmailException $e ) {
+		}
 
 		// assert member1 not in mailchimp
 		$subscriber1 = null;
