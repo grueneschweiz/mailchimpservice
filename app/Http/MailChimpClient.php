@@ -93,7 +93,15 @@ class MailChimpClient {
 	 */
 	private function validateResponseContent( string $method, $response ) {
 		if ( isset( $response['status'] ) && is_numeric( $response['status'] ) && $response['status'] !== 200 ) {
-			throw new \Exception( "$method request against Mailchimp failed (status code: {$response['status']}): {$response['detail']}" );
+			$message = "$method request against Mailchimp failed (status code: {$response['status']}): {$response['detail']}";
+
+			if ( array_key_exists( 'errors', $response ) ) {
+				foreach ( $response['errors'] as $k => $v ) {
+					$message .= "\nErrors[$k] => {$v['message']}";
+				}
+			}
+
+			throw new \Exception( $message );
 		}
 	}
 
