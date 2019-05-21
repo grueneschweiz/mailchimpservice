@@ -182,7 +182,7 @@ class Config {
 	}
 
 	/**
-	 * The the mailchimp merge field key that corresponds to the crm's id
+	 * The mailchimp merge field key that corresponds to the crm's id
 	 *
 	 * @return string
 	 * @throws ConfigException
