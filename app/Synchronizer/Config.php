@@ -226,7 +226,7 @@ class Config {
 	}
 
 	/**
-	 * Return true, if the given config is valid, else return array with error messages
+	 * Return true, if the given config is valid
 	 *
 	 * @return bool
 	 */
