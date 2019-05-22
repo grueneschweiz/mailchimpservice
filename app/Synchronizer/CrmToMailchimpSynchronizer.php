@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\InvalidEmailException;
+use App\Exceptions\MailchimpClientException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
@@ -116,7 +117,7 @@ class CrmToMailchimpSynchronizer {
 			// sync members to mailchimp
 			foreach ( $crmData as $crmId => $record ) {
 				// don't use mailchimps batch operations, because they are async
-				$this->syncSingle( $crmId, $record );
+				$this->syncSingleRetry( $crmId, $record );
 			}
 
 			Log::debug( sprintf(
@@ -132,12 +133,45 @@ class CrmToMailchimpSynchronizer {
 	}
 
 	/**
+	 * Try to sync the given record to mailchimp. Retry twice if it fails due to a MailchimpClientException.
+	 *
+	 * @param $crmId
+	 * @param $record
+	 * @param int $attempt
+	 *
+	 * @throws \App\Exceptions\ConfigException
+	 * @throws \App\Exceptions\ParseCrmDataException
+	 */
+	private function syncSingleRetry( $crmId, $record, $attempt = 0 ) {
+		try {
+			$this->syncSingle( $crmId, $record );
+		} catch ( MailchimpClientException $e ) {
+			switch ( $attempt ) {
+				case 0:
+					sleep( 10 );
+					$this->syncSingleRetry( $crmId, $record, 1 );
+
+					return;
+
+				case 1:
+					sleep( 30 );
+					$this->syncSingleRetry( $crmId, $record, 2 );
+
+					return;
+
+				default:
+					Log::error( "Failed to sync record $crmId to Mailchimp after tree attempts. Error: {$e->getMessage()}" );
+			}
+		}
+	}
+
+	/**
 	 * @param int $crmId
 	 * @param array|null $crmData
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
-	 * @throws \Exception
+	 * @throws \App\Exceptions\MailchimpClientException
 	 */
 	private function syncSingle( int $crmId, $crmData ) {
 		Log::debug( "Start syncing record with id: $crmId" );
@@ -228,8 +262,8 @@ class CrmToMailchimpSynchronizer {
 		$this->deleteOpenRevisions();
 
 		// get current revision id from crm
-		$get = $this->crmClient->get( 'revision' );
-		$latestRevId                = (int) json_decode( (string) $get->getBody() );
+		$get         = $this->crmClient->get( 'revision' );
+		$latestRevId = (int) json_decode( (string) $get->getBody() );
 
 		// add current revision
 		$latestRev                  = new Revision();

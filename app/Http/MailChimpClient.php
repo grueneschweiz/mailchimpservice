@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use App\Exceptions\InvalidEmailException;
+use App\Exceptions\MailchimpClientException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
@@ -57,7 +58,7 @@ class MailChimpClient {
 	 * @param string $email
 	 *
 	 * @return array|false
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	public function getSubscriber( string $email ) {
 		$id = self::calculateSubscriberId( $email );
@@ -75,11 +76,11 @@ class MailChimpClient {
 	 * @param string $method
 	 * @param $response
 	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	private function validateResponseStatus( string $method, $response ) {
 		if ( ! $response ) {
-			throw new \Exception( "$method request against Mailchimp failed: {$this->client->getLastError()}" );
+			throw new MailchimpClientException( "$method request against Mailchimp failed: {$this->client->getLastError()}" );
 		}
 	}
 
@@ -89,7 +90,7 @@ class MailChimpClient {
 	 * @param string $method
 	 * @param $response
 	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	private function validateResponseContent( string $method, $response ) {
 		if ( isset( $response['status'] ) && is_numeric( $response['status'] ) && $response['status'] !== 200 ) {
@@ -101,7 +102,7 @@ class MailChimpClient {
 				}
 			}
 
-			throw new \Exception( $message );
+			throw new MailchimpClientException( $message );
 		}
 	}
 
@@ -114,8 +115,7 @@ class MailChimpClient {
 	 * @param string $crmIdKey
 	 *
 	 * @return false|string email address on match else false
-	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	public function getSubscriberEmailByCrmId( string $crmId, string $crmIdKey ) {
 		$subscribers = $this->getAllSubscribers( $crmIdKey );
@@ -131,8 +131,7 @@ class MailChimpClient {
 	 * @param string $crmIdKey
 	 *
 	 * @return array [email => crmId, ...]
-	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	private function getAllSubscribers( string $crmIdKey ): array {
 		if ( null !== $this->subscribers ) {
@@ -172,9 +171,9 @@ class MailChimpClient {
 	 * @param string $email provide email to update subscribers email address
 	 *
 	 * @return array|false
-	 * @throws \Exception
 	 * @throws \InvalidArgumentException
 	 * @throws InvalidEmailException
+	 * @throws MailchimpClientException
 	 */
 	public function putSubscriber( array $mcData, string $email = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
@@ -215,7 +214,7 @@ class MailChimpClient {
 	 * @param string $id
 	 * @param array $new the tags the subscriber should have
 	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	private function updateSubscribersTags( string $id, array $new ) {
 		$get = $this->getSubscriberTags( $id );
@@ -253,7 +252,7 @@ class MailChimpClient {
 	 * @param string $id
 	 *
 	 * @return array|false
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	private function getSubscriberTags( string $id ) {
 		// somehow we had a lot of timeouts when requesting the tags, therefore we increased the timeout
@@ -272,7 +271,7 @@ class MailChimpClient {
 	 * @param array $tags the tags that should be activated and the ones that should be deactivated
 	 *
 	 * @return array|false
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 * @see https://developer.mailchimp.com/documentation/mailchimp/reference/lists/members/tags/#%20
 	 *
 	 */
@@ -290,7 +289,7 @@ class MailChimpClient {
 	 *
 	 * @param string $email
 	 *
-	 * @throws \Exception
+	 * @throws MailchimpClientException
 	 */
 	public function deleteSubscriber( string $email ) {
 		$id     = self::calculateSubscriberId( $email );
