@@ -161,7 +161,7 @@ class Filter {
 
 			$map->addCrmData( $record );
 			$data    = $map->getMailchimpDataArray();
-			$inGroup = reset( $data );
+			$inGroup = reset( $data ); // so we get simply the boolean indicating if this group is subscribed
 
 			if ( $inGroup ) {
 				return true;
