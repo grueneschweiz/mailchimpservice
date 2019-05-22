@@ -98,19 +98,19 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_add_all() {
 		$revisionId = 123;
 
-		$member1 = $this->getMember( 1, $this->emailMember1 ); // relevant
-		$member2 = $this->getMember( 2, $this->emailMember2 ); // not relevant
+		$member1 = $this->getMember( $this->emailMember1 ); // relevant
+		$member2 = $this->getMember( $this->emailMember2 ); // not relevant
 
 		$member2['newsletterCountryD'] = 'no';
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [
-				2 => $member2
+				$member2['id'] => $member2
 			] ) ),
 			new Response( 200, [], json_encode( $member2 ) ),
 			new Response( 200, [], json_encode( [
@@ -143,19 +143,19 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_update_fromRevision() {
 		$revisionId = 124;
 
-		$member1                = $this->getMember( 1, $this->emailMember1 );
+		$member1                = $this->getMember( $this->emailMember1 );
 		$member1['emailStatus'] = 'invalid';
 
-		$member2 = $this->getMember( 2, $this->emailMember2 );
+		$member2 = $this->getMember( $this->emailMember2 );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [
-				2 => $member2
+				$member2['id'] => $member2
 			] ) ),
 			new Response( 200, [], json_encode( $member2 ) ),
 			new Response( 200, [], json_encode( [] ) ),
@@ -181,12 +181,12 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$revisionId = 126;
 
 		$email   = str_random() . '@mymail.com';
-		$member1 = $this->getMember( 1, $email );
+		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
@@ -199,6 +199,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 
 		// the test
 		$member1['email1'] = str_random() . '@mymail.com';
+		$member1['group']  = 'ZH';
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
@@ -221,13 +222,15 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 
 	public function testSyncAllChanges_invalid_email() {
 		// the test
-		$member1 = $this->getMember( 1, 'mail@example.com' );
+		$member1 = $this->getMember( 'mail@example.com' );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( 123 ) ),
 			new Response( 200, [], json_encode( [
-				1 => $member1
+				$member1['id'] => $member1
 			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
@@ -247,13 +250,12 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		// precondition
 		$revisionId = 126;
 
-		$id      = random_int( 999999, 9999999 );
 		$email   = str_random() . '@mymail.com';
-		$member1 = $this->getMember( $id, $email );
+		$member1 = $this->getMember( $email );
 
 		// make sure there is no member with this id
 		try {
-			$email = $this->mcClientTesting->getSubscriberEmailByCrmId( $id, 'id' );
+			$email = $this->mcClientTesting->getSubscriberEmailByCrmId( $member1['id'], 'id' );
 			$this->mcClientTesting->deleteSubscriber( $email );
 		} catch ( \Exception $e ) {
 		}
@@ -261,7 +263,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				$id => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
@@ -279,7 +281,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				$id => $member1
+				$member1['id'] => $member1
 			] ) ),
 			new Response( 200, [], json_encode( $member1 ) ),
 			new Response( 200, [], json_encode( [] ) ),
@@ -303,7 +305,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$revisionId = 127;
 
 		$email   = str_random() . '@mymail.com';
-		$member1 = $this->getMember( random_int( 10000, 1000000 ), $email );
+		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
@@ -344,15 +346,28 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	}
 
 	public function testSyncAllChanges_delete_fromRevision() {
-		$revisionId = 125;
+		// precondition
+		$revisionId = 130;
+
+		$email   = str_random() . '@mymail.com';
+		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
 			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				1 => null
+				$member1['id'] => $member1
 			] ) ),
+			new Response( 200, [], json_encode( $member1 ) ),
+			new Response( 200, [], json_encode( [] ) ),
+		] );
+
+		$this->sync->syncAllChanges( 1, 0 );
+
+		// test
+		$this->mockCrmResponse( [
+			new Response( 200, [], json_encode( $revisionId ) ),
 			new Response( 200, [], json_encode( [
-				2 => null
+				$member1['id'] => null
 			] ) ),
 			new Response( 200, [], json_encode( [] ) ),
 		] );
@@ -366,17 +381,9 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		} catch ( \Exception $e ) {
 		}
 		$this->assertNull( $subscriber1 );
-
-		// assert member2 not in mailchimp
-		$subscriber2 = null;
-		try {
-			$subscriber2 = $this->mcClientTesting->getSubscriber( $this->emailMember2 );
-		} catch ( \Exception $e ) {
-		}
-		$this->assertNull( $subscriber2 );
 	}
 
-	private function getMember( $crmId, $email ) {
+	private function getMember( $email ) {
 		return [
 			'recordStatus'         => 'active',
 			'email1'               => $email,
@@ -394,7 +401,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 			'notesCountry'         => 'Go to hell',
 			'group'                => 'BE',
 			'recordCategory'       => 'media',
-			'id'                   => (string) $crmId,
+			'id'                   => (string) random_int( 1000000, PHP_INT_MAX ),
 		];
 	}
 }
