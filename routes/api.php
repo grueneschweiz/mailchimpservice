@@ -1,7 +1,9 @@
 <?php
 
+use App\Console\Commands\EndpointCommand;
+use App\Http\Controllers\RestApi\RestController;
 use Illuminate\Http\Request;
-use App\Http\Controllers\RestApi\RestController as RestController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,19 +15,25 @@ use App\Http\Controllers\RestApi\RestController as RestController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::group( [ 'prefix' => 'v1', 'middleware' => [ 'api' ] ], function () {
+	/*
+	|--------------------------------------------------------------------------
+	| Member Resources
+	|--------------------------------------------------------------------------
+	*/
+	Route::group( [ 'prefix' => 'mailchimp' ], function () {
+		Route::post( 'webhook/{secret}', function ( Request $request, string $secret ) {
+			$controller = new RestController();
+			$controller->handlePost( $request, $secret );
 
-Route::get('lists', function (Request $request) {
-    $controller = new RestController();
-    return $controller->getLists();
-});
+			return response( '', 204 );
+		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
 
+		Route::get( 'webhook/{secret}', function ( Request $request, string $secret ) {
+			$controller = new RestController();
+			$controller->handleGet( $secret );
 
-Route::get('list/{list_id}', function (Request $request, $list_id) {
-    $controller = new RestController();
-    return $controller->getList($list_id);
-});
-
-Route::put('customer', function (Request $request) {
-    $controller = new RestController();
-    return $controller->put($request);
-});
+			return response( '', 204 );
+		} )->name( EndpointCommand::MC_ENDPOINT_ROUTE_NAME );
+	} );
+} );

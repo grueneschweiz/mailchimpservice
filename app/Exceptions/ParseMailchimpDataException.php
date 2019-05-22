@@ -1,9 +1,15 @@
 <?php
+/**
+ * Created by PhpStorm.
+ * User: cyrillbolliger
+ * Date: 27.10.18
+ * Time: 16:55
+ */
 
 namespace App\Exceptions;
 
 
-class IllegalArgumentException extends \Exception {
+class ParseMailchimpDataException extends \Exception {
 
 	/**
 	 * Render the exception into an HTTP response.
@@ -13,7 +19,6 @@ class IllegalArgumentException extends \Exception {
 	 * @return \Illuminate\Http\Response
 	 */
 	public function render( $request ) {
-		abort( 400, "Something is wrong with your argument: " . $this->getMessage() );
+		abort( 400, "Invalid payload: " . $this->getMessage() );
 	}
-
 }

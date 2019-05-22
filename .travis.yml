@@ -9,7 +9,7 @@ install:
   - docker-compose stop
 
 script:
-  - docker-compose run -e MAILCHIMP_API_KEY=${MAILCHIMP_API_KEY} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
+  - docker-compose run -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY} -e LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
 
 after_success:
   - travis_retry docker-compose run -e TRAVIS=${TRAVIS} -e TRAVIS_JOB_ID=${TRAVIS_JOB_ID} app php /var/www/html/vendor/bin/php-coveralls -v

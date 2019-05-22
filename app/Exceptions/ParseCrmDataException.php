@@ -3,7 +3,7 @@
 namespace App\Exceptions;
 
 
-class IllegalArgumentException extends \Exception {
+class ParseCrmDataException extends \Exception {
 
 	/**
 	 * Render the exception into an HTTP response.
@@ -13,7 +13,6 @@ class IllegalArgumentException extends \Exception {
 	 * @return \Illuminate\Http\Response
 	 */
 	public function render( $request ) {
-		abort( 400, "Something is wrong with your argument: " . $this->getMessage() );
+		abort( 400, "Invalid payload: " . $this->getMessage() );
 	}
-
 }
