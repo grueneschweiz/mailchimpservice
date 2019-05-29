@@ -107,7 +107,7 @@ class MailchimpToCrmSynchronizer {
 				$get     = $this->crmClient->get( 'member/' . $crmId );
 				$crmData = json_decode( (string) $get->getBody(), true );
 				$crmData = $this->unsubscribeAll( $crmData );
-				Log::debug( 'MC_UNSUBSCRIBE: Unsubscribe member in crm.' );
+				Log::debug( "MC_UNSUBSCRIBE: Unsubscribe member in crm (crm id: $crmId)." );
 				break;
 
 			case self::MC_CLEANED_EMAIL:
@@ -119,7 +119,7 @@ class MailchimpToCrmSynchronizer {
 				$crmData                 = json_decode( (string) $get->getBody(), true );
 				$crmData['emailStatus']  = 'invalid';
 				$crmData['notesCountry'] .= sprintf( "\n%s: Mailchimp reported the email as invalid. Email status changed.", date( 'Y-m-d H:i' ) );
-				Log::debug( 'MC_CLEANED_EMAIL: Mark email invalid in crm.' );
+				Log::debug( 'MC_CLEANED_EMAIL: Mark email invalid in crm (crm id: $crmId).' );
 				break;
 
 			case self::MC_PROFILE_UPDATE:
@@ -128,7 +128,7 @@ class MailchimpToCrmSynchronizer {
 				$mcData  = $this->mcClient->getSubscriber( $email );
 				$crmId   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$crmData = $mapper->mailchimpToCrm( $mcData );
-				Log::debug( 'MC_PROFILE_UPDATE: Update subscriptions in crm.' );
+				Log::debug( 'MC_PROFILE_UPDATE: Update subscriptions in crm (crm id: $crmId).' );
 				break;
 
 			case self::MC_EMAIL_UPDATE:
@@ -136,7 +136,7 @@ class MailchimpToCrmSynchronizer {
 				$mcData  = $this->mcClient->getSubscriber( $email );
 				$crmId   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$crmData = $this->updateEmail( $mcData );
-				Log::debug( 'MC_EMAIL_UPDATE: Update email in crm.' );
+				Log::debug( 'MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId).' );
 				break;
 
 			default:
