@@ -3,7 +3,7 @@
 namespace App\Exceptions;
 
 
-class EmailComplianceException extends \Exception {
+class MemberDeleteException extends \Exception {
 
 	/**
 	 * Render the exception into an HTTP response.

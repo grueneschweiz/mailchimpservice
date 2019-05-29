@@ -7,6 +7,7 @@ namespace App\Synchronizer;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MemberDeleteException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
@@ -142,7 +143,6 @@ class CrmToMailchimpSynchronizer {
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
-	 * @throws \App\Exceptions\EmailComplianceException
 	 */
 	private function syncSingleRetry( $crmId, $record, $attempt = 0 ) {
 		try {
@@ -166,6 +166,8 @@ class CrmToMailchimpSynchronizer {
 			}
 		} catch ( EmailComplianceException $e ) {
 			Log::info( "This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed." );
+		} catch ( MemberDeleteException $e ) {
+			Log::info( $e->getMessage() );
 		}
 	}
 
@@ -177,6 +179,7 @@ class CrmToMailchimpSynchronizer {
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 * @throws \App\Exceptions\MailchimpClientException
 	 * @throws \App\Exceptions\EmailComplianceException
+	 * @throws \App\Exceptions\MemberDeleteException
 	 */
 	private function syncSingle( int $crmId, $crmData ) {
 		Log::debug( "Start syncing record with id: $crmId" );
@@ -289,7 +292,7 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function deleteOpenRevisions() {
 		$openRevisions = Revision::where( 'config_name', $this->configName )
-			->where( 'sync_successful', false );
+		                         ->where( 'sync_successful', false );
 
 		$count = $openRevisions->count();
 
@@ -309,9 +312,9 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function closeOpenRevision() {
 		$revision = Revision::where( 'config_name', $this->configName )
-			->where( 'sync_successful', false )
-			->latest()
-			->firstOrFail(); // else die hard
+		                    ->where( 'sync_successful', false )
+		                    ->latest()
+		                    ->firstOrFail(); // else die hard
 
 		$revision->sync_successful = true;
 		$revision->save();
@@ -331,9 +334,9 @@ class CrmToMailchimpSynchronizer {
 	private function getLatestSuccessfullSyncRevisionId(): int {
 		try {
 			return Revision::where( 'config_name', $this->configName )
-				->where( 'sync_successful', true )
-				->latest()
-				->firstOrFail()
+			               ->where( 'sync_successful', true )
+			               ->latest()
+			               ->firstOrFail()
 				->revision_id;
 		} catch ( ModelNotFoundException $e ) {
 			return - 1;

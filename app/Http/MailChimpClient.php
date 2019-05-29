@@ -5,6 +5,7 @@ namespace App\Http;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MemberDeleteException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
@@ -297,12 +298,18 @@ class MailChimpClient {
 	 * @param string $email
 	 *
 	 * @throws MailchimpClientException
+	 * @throws MemberDeleteException
 	 */
 	public function deleteSubscriber( string $email ) {
 		$id     = self::calculateSubscriberId( $email );
 		$delete = $this->client->delete( "lists/{$this->listId}/members/$id" );
 
 		$this->validateResponseStatus( 'DELETE subscriber', $delete );
+		if ( isset( $delete['status'] ) && is_numeric( $delete['status'] ) && $delete['status'] !== 200 ) {
+			if ( isset( $delete['detail'] ) && strpos( $delete['detail'], 'member cannot be removed' ) ) {
+				throw new MemberDeleteException( $delete['detail'] );
+			}
+		}
 		$this->validateResponseContent( 'DELETE subscriber', $delete );
 	}
 
