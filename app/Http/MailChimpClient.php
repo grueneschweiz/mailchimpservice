@@ -201,8 +201,8 @@ class MailChimpClient {
 			}
 		}
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
-			if ( isset( $put['errors'] ) && strpos( $put['errors'][0]['message'], 'compliance state' ) ) {
-				throw new EmailComplianceException( $put['errors'][0]['message'] );
+			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'compliance state' ) ) {
+				throw new EmailComplianceException( $put['detail'] );
 			}
 		}
 		$this->validateResponseContent( 'PUT subscriber', $put );
