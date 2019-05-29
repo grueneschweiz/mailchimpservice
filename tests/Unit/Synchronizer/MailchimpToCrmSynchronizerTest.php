@@ -194,9 +194,29 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 	}
 
 	public function testSyncSingle__bounced() {
-		// config
-		$email  = str_random() . '@mymail.com';
-		$crmId  = 123456;
+		$email = str_random() . '@mymail.com';
+		$crmId = random_int( 10 ** 6, 10 ** 7 );
+
+		// precondition
+		$subscriber = [
+			'email_address' => $email,
+			'merge_fields'  => [
+				'FNAME'     => 'First Name',
+				'LNAME'     => 'Last Name',
+				'GENDER'    => 'n',
+				'WEBLINGID' => (string) $crmId,
+			],
+			'interests'     => [
+				'55f795def4' => true,
+				'1851be732e' => false,
+				'294df36247' => true,
+				'633e3c8dd7' => false,
+			],
+			'tags'          => [],
+		];
+
+		$this->mcClientTesting->putSubscriber( $subscriber );
+
 		$member = $this->getMember( $crmId, $email );
 
 		// precondition
@@ -210,13 +230,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 			'type' => 'cleaned',
 			'data' => [
 				'email'  => $email,
-				'merges' => [
-					'EMAIL'     => $email,
-					'FNAME'     => 'First Name',
-					'LANME'     => 'Last Name',
-					'GENDER'    => 'n',
-					'WEBLINGID' => (string) $crmId,
-				],
+				'reason' => 'hard',
 			],
 		];
 
@@ -230,6 +244,9 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 		$this->assertEquals( 'invalid', $data['emailStatus']['value'] );
 		$this->assertStringContainsString( 'Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry']['value'] );
 		$this->assertStringContainsString( $member['notesCountry'], $data['notesCountry']['value'] );
+
+		// cleanup
+		$this->mcClientTesting->deleteSubscriber( $email );
 	}
 
 	public function testSyncSingle__updated() {

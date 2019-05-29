@@ -2,8 +2,10 @@
 
 namespace App\Http;
 
+use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MemberDeleteException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient {
@@ -174,6 +176,7 @@ class MailChimpClient {
 	 * @throws \InvalidArgumentException
 	 * @throws InvalidEmailException
 	 * @throws MailchimpClientException
+	 * @throws EmailComplianceException
 	 */
 	public function putSubscriber( array $mcData, string $email = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
@@ -196,6 +199,11 @@ class MailChimpClient {
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
 			if ( isset( $put['errors'] ) && 0 === strpos( $put['errors'][0]['message'], 'Invalid email address' ) ) {
 				throw new InvalidEmailException( $put['errors'][0]['message'] );
+			}
+		}
+		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
+			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'compliance state' ) ) {
+				throw new EmailComplianceException( $put['detail'] );
 			}
 		}
 		$this->validateResponseContent( 'PUT subscriber', $put );
@@ -290,12 +298,18 @@ class MailChimpClient {
 	 * @param string $email
 	 *
 	 * @throws MailchimpClientException
+	 * @throws MemberDeleteException
 	 */
 	public function deleteSubscriber( string $email ) {
 		$id     = self::calculateSubscriberId( $email );
 		$delete = $this->client->delete( "lists/{$this->listId}/members/$id" );
 
 		$this->validateResponseStatus( 'DELETE subscriber', $delete );
+		if ( isset( $delete['status'] ) && is_numeric( $delete['status'] ) && $delete['status'] !== 200 ) {
+			if ( isset( $delete['detail'] ) && strpos( $delete['detail'], 'member cannot be removed' ) ) {
+				throw new MemberDeleteException( $delete['detail'] );
+			}
+		}
 		$this->validateResponseContent( 'DELETE subscriber', $delete );
 	}
 

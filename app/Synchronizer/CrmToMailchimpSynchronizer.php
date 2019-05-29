@@ -4,8 +4,10 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MemberDeleteException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
@@ -162,6 +164,10 @@ class CrmToMailchimpSynchronizer {
 				default:
 					Log::error( "Failed to sync record $crmId to Mailchimp after tree attempts. Error: {$e->getMessage()}" );
 			}
+		} catch ( EmailComplianceException $e ) {
+			Log::info( "This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed." );
+		} catch ( MemberDeleteException $e ) {
+			Log::info( $e->getMessage() );
 		}
 	}
 
@@ -172,6 +178,8 @@ class CrmToMailchimpSynchronizer {
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 * @throws \App\Exceptions\MailchimpClientException
+	 * @throws \App\Exceptions\EmailComplianceException
+	 * @throws \App\Exceptions\MemberDeleteException
 	 */
 	private function syncSingle( int $crmId, $crmData ) {
 		Log::debug( "Start syncing record with id: $crmId" );

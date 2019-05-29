@@ -113,13 +113,18 @@ class MailchimpToCrmSynchronizer {
 			case self::MC_CLEANED_EMAIL:
 				// set email1 to invalid
 				// add note 'email set to invalid because it bounced in mailchimp'
+				if ( 'hard' !== $mcData['data']['reason'] ) {
+					Log::debug( 'MC_CLEANED_EMAIL: Bounce not hard. No action taken.' );
+
+					return;
+				}
 				$mcData                  = $this->mcClient->getSubscriber( $email );
 				$crmId                   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$get                     = $this->crmClient->get( 'member/' . $crmId );
-				$crmData                 = json_decode( (string) $get->getBody(), true );
+				$crmRespData             = json_decode( (string) $get->getBody(), true );
 				$crmData['emailStatus']  = 'invalid';
-				$crmData['notesCountry'] .= sprintf( "\n%s: Mailchimp reported the email as invalid. Email status changed.", date( 'Y-m-d H:i' ) );
-				Log::debug( 'MC_CLEANED_EMAIL: Mark email invalid in crm (crm id: $crmId).' );
+				$crmData['notesCountry'] = $crmRespData['notesCountry'] . sprintf( "\n%s: Mailchimp reported the email as invalid. Email status changed.", date( 'Y-m-d H:i' ) );
+				Log::debug( "MC_CLEANED_EMAIL: Mark email invalid in crm (crm id: $crmId)." );
 				break;
 
 			case self::MC_PROFILE_UPDATE:
@@ -128,7 +133,7 @@ class MailchimpToCrmSynchronizer {
 				$mcData  = $this->mcClient->getSubscriber( $email );
 				$crmId   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$crmData = $mapper->mailchimpToCrm( $mcData );
-				Log::debug( 'MC_PROFILE_UPDATE: Update subscriptions in crm (crm id: $crmId).' );
+				Log::debug( "MC_PROFILE_UPDATE: Update subscriptions in crm (crm id: $crmId)." );
 				break;
 
 			case self::MC_EMAIL_UPDATE:
@@ -136,7 +141,7 @@ class MailchimpToCrmSynchronizer {
 				$mcData  = $this->mcClient->getSubscriber( $email );
 				$crmId   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$crmData = $this->updateEmail( $mcData );
-				Log::debug( 'MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId).' );
+				Log::debug( "MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId)." );
 				break;
 
 			default:
@@ -156,7 +161,7 @@ class MailchimpToCrmSynchronizer {
 		$this->crmClient->put( 'member/' . $crmId, $putData );
 
 		Log::debug( sprintf(
-			"Sync successful (record id: %d)",
+			"Sync successful (mailchimp record id: %d)",
 			$mailchimpId
 		) );
 	}
