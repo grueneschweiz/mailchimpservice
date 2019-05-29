@@ -114,7 +114,7 @@ class MailchimpToCrmSynchronizer {
 				// set email1 to invalid
 				// add note 'email set to invalid because it bounced in mailchimp'
 				$mcData                  = $this->mcClient->getSubscriber( $email );
-				$crmId                   = $mcData['data']['merges'][ $this->config->getMailchimpKeyOfCrmId() ];
+				$crmId                   = $mcData['merge_fields'][ $this->config->getMailchimpKeyOfCrmId() ];
 				$get                     = $this->crmClient->get( 'member/' . $crmId );
 				$crmData                 = json_decode( (string) $get->getBody(), true );
 				$crmData['emailStatus']  = 'invalid';
