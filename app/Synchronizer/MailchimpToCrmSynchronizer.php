@@ -161,7 +161,7 @@ class MailchimpToCrmSynchronizer {
 		$this->crmClient->put( 'member/' . $crmId, $putData );
 
 		Log::debug( sprintf(
-			"Sync successful (record id: %d)",
+			"Sync successful (mailchimp record id: %d)",
 			$mailchimpId
 		) );
 	}
