@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use DrewM\MailChimp\MailChimp;
@@ -174,6 +175,7 @@ class MailChimpClient {
 	 * @throws \InvalidArgumentException
 	 * @throws InvalidEmailException
 	 * @throws MailchimpClientException
+	 * @throws EmailComplianceException
 	 */
 	public function putSubscriber( array $mcData, string $email = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
@@ -196,6 +198,11 @@ class MailChimpClient {
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
 			if ( isset( $put['errors'] ) && 0 === strpos( $put['errors'][0]['message'], 'Invalid email address' ) ) {
 				throw new InvalidEmailException( $put['errors'][0]['message'] );
+			}
+		}
+		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
+			if ( isset( $put['errors'] ) && strpos( $put['errors'][0]['message'], 'compliance state' ) ) {
+				throw new EmailComplianceException( $put['errors'][0]['message'] );
 			}
 		}
 		$this->validateResponseContent( 'PUT subscriber', $put );
