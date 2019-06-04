@@ -20,7 +20,8 @@ class Sync extends Command {
                             {direction : Possible values are "' . self::DIRECTION_CRM . '" and "' . self::DIRECTION_MAILCHIMP . '".}
                             {config : The name of the config file to use.}
                             {--limit=100 : How may records should be syncronized at a time.}
-                            {--offset=0 : How many records should be skipped. Usually used in combination with --limit.}';
+                            {--offset=0 : How many records should be skipped. Usually used in combination with --limit.}
+                            {--all : Ignore revision and sync all records, not just changes.}';
 
 	/**
 	 * The console command description.
@@ -81,6 +82,7 @@ class Sync extends Command {
 	private function syncToMailchimp() {
 		$limit  = $this->option( 'limit' );
 		$offset = $this->option( 'offset' );
+		$all    = $this->option( 'all' );
 
 		if ( ! is_numeric( $limit ) || (int) $limit <= 0 ) {
 			$this->error( 'The limit option must pass an integer > 0.' );
@@ -99,7 +101,7 @@ class Sync extends Command {
 			$this->info( 'Syncing... please be patient!' );
 
 			try {
-				$sync->syncAllChanges( (int) $limit, (int) $offset ); // this is the relevant line! the rest is error handling...
+				$sync->syncAllChanges( (int) $limit, (int) $offset, (bool) $all ); // this is the relevant line! the rest is error handling...
 			} catch ( ParseCrmDataException $e ) {
 				$this->error( 'ParseCrmDataException: ' . $e->getMessage() );
 				$this->error( $e->getFile() . ' on line ' . $e->getLine() . "\n" . $e->getTraceAsString(), 'v' );

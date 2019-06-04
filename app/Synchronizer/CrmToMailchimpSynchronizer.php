@@ -101,13 +101,14 @@ class CrmToMailchimpSynchronizer {
 	 *
 	 * @param int $limit number of records to sync at a time
 	 * @param int $offset number of records to skip
+	 * @param bool $all sync all records, not just changes
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 * @throws RequestException
 	 * @throws \Exception
 	 */
-	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
+	public function syncAllChanges( int $limit = 100, int $offset = 0, bool $all = false ) {
 		if ( ! $this->lock() ) {
 			Log::info( "There is already a synchronization for {$this->configName} running. Start of new sync job canceled." );
 
@@ -116,6 +117,11 @@ class CrmToMailchimpSynchronizer {
 
 		// get revision id of last successful sync (or -1 if first run)
 		$revId = $this->getLatestSuccessfullSyncRevisionId();
+
+		// sync all records instead of changes if all flag is set
+		if ( $all ) {
+			$revId = - 1;
+		}
 
 		if ( 0 === $offset ) {
 			Log::debug( sprintf(
