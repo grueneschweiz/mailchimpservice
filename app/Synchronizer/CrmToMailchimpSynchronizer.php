@@ -124,11 +124,13 @@ class CrmToMailchimpSynchronizer {
 		}
 
 		if ( 0 === $offset ) {
-			Log::debug( sprintf(
-				"Starting to sync all changes from crm into mailchimp\nConfig: %s\nId of last successfully synced revision: %d",
-				$this->configName,
-				$revId
-			) );
+			Log::debug( "Starting to sync all changes from crm into mailchimp\nConfig: {$this->configName}" );
+
+			if ( - 1 === $revId ) {
+				Log::debug( "Syncing all records regardless of changes." );
+			} else {
+				Log::debug( "Id of last successfully synced revision: $revId" );
+			}
 
 			// get latest revision id and store it in the local database
 			$this->openNewRevision();
