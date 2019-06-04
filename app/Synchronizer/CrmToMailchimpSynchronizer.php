@@ -52,7 +52,12 @@ class CrmToMailchimpSynchronizer {
 	/**
 	 * @var string
 	 */
-	private $lockPath;
+	private $lockRoot;
+
+	/**
+	 * @var string
+	 */
+	private $lockFile;
 
 	/**
 	 * Synchronizer constructor.
@@ -75,7 +80,8 @@ class CrmToMailchimpSynchronizer {
 		$this->filter = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
 		$this->mapper = new Mapper( $this->config->getFieldMaps() );
 
-		$this->lockPath = storage_path() . self::LOCK_BASE_FOLDER_NAME;
+		$this->lockRoot = storage_path() . '/' . self::LOCK_BASE_FOLDER_NAME;
+		$this->lockFile = "{$this->lockRoot}/{$this->configName}.lock";
 	}
 
 	/**
@@ -131,6 +137,7 @@ class CrmToMailchimpSynchronizer {
 			if ( empty( $crmData ) ) {
 				Log::debug( "Everything synced." );
 				$this->closeOpenRevision();
+				$this->unlock();
 				Log::debug( "Sync for config {$this->configName} successful." );
 
 				return;
@@ -152,8 +159,6 @@ class CrmToMailchimpSynchronizer {
 			// get next batch
 			$offset += $limit;
 		}
-
-		$this->unlock();
 	}
 
 	/**
@@ -170,14 +175,22 @@ class CrmToMailchimpSynchronizer {
 	 * @throws \Exception
 	 */
 	public function lock(): bool {
-		if ( ! is_dir( $this->lockPath ) ) {
-			$create = mkdir( $this->lockPath, 751 );
+		if ( ! is_dir( $this->lockRoot ) ) {
+			$create = mkdir( $this->lockRoot, 0751 );
 			if ( ! $create ) {
 				throw new \Exception( 'Lock folder did not exist and could not be created.' );
 			}
 		}
 
-		$lock = mkdir( "{$this->lockPath}/{$this->configName}.lock", 700 );
+		// this is only for the sake of nice messages
+		if ( is_dir( $this->lockFile ) ) {
+			return false;
+		}
+
+		// there is a small race condition here, but it affects only the error message
+		// the mkdir is race condition free and kills the process if the file exists.
+
+		$lock = mkdir( $this->lockFile, 0700 );
 
 		return $lock;
 	}
@@ -186,7 +199,7 @@ class CrmToMailchimpSynchronizer {
 	 * Remove lock folder.
 	 */
 	public function unlock() {
-		rmdir( "{$this->lockPath}/{$this->configName}.lock" );
+		rmdir( "{$this->lockRoot}/{$this->configName}.lock" );
 	}
 
 	/**
