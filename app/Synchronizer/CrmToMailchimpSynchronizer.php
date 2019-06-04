@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 class CrmToMailchimpSynchronizer {
+	private const LOCK_BASE_FOLDER_NAME = 'locks';
+
 	/**
 	 * @var Config
 	 */
@@ -48,6 +50,11 @@ class CrmToMailchimpSynchronizer {
 	private $mapper;
 
 	/**
+	 * @var string
+	 */
+	private $lockPath;
+
+	/**
 	 * Synchronizer constructor.
 	 *
 	 * @param string $configFileName file name of the config file
@@ -67,6 +74,8 @@ class CrmToMailchimpSynchronizer {
 
 		$this->filter = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
 		$this->mapper = new Mapper( $this->config->getFieldMaps() );
+
+		$this->lockPath = storage_path() . self::LOCK_BASE_FOLDER_NAME;
 	}
 
 	/**
@@ -79,6 +88,11 @@ class CrmToMailchimpSynchronizer {
 	 * To keep track of the changes already synced, the revision id of
 	 * the crm is used in conjunction with this app's revision model.
 	 *
+	 * This method prevents concurrent runs with the same config,
+	 * to eliminate race conditions on the records to sync and to
+	 * avoid to start the same sync job from the same revision
+	 * multiple times if one is still running.
+	 *
 	 * @param int $limit number of records to sync at a time
 	 * @param int $offset number of records to skip
 	 *
@@ -88,6 +102,12 @@ class CrmToMailchimpSynchronizer {
 	 * @throws \Exception
 	 */
 	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
+		if ( ! $this->lock() ) {
+			Log::info( "There is already a synchronization for {$this->configName} running. Start of new sync job canceled." );
+
+			return;
+		}
+
 		// get revision id of last successful sync (or -1 if first run)
 		$revId = $this->getLatestSuccessfullSyncRevisionId();
 
@@ -132,6 +152,41 @@ class CrmToMailchimpSynchronizer {
 			// get next batch
 			$offset += $limit;
 		}
+
+		$this->unlock();
+	}
+
+	/**
+	 * Lock process with this config file. If already locked, false is returned.
+	 *
+	 * We bind it to the config file, so only one process per config can sync at a
+	 * time, but if there are multiple different configs, they may sync at in parallel.
+	 *
+	 * Since we can't use semaphores (hosting too cheap), we fallback to the folder
+	 * trick, to prevent any race conditions.
+	 *
+	 * @return bool
+	 *
+	 * @throws \Exception
+	 */
+	public function lock(): bool {
+		if ( ! is_dir( $this->lockPath ) ) {
+			$create = mkdir( $this->lockPath, 751 );
+			if ( ! $create ) {
+				throw new \Exception( 'Lock folder did not exist and could not be created.' );
+			}
+		}
+
+		$lock = mkdir( "{$this->lockPath}/{$this->configName}.lock", 700 );
+
+		return $lock;
+	}
+
+	/**
+	 * Remove lock folder.
+	 */
+	public function unlock() {
+		rmdir( "{$this->lockPath}/{$this->configName}.lock" );
 	}
 
 	/**
