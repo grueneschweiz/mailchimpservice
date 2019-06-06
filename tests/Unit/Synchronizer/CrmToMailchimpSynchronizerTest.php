@@ -62,10 +62,20 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$filter->setAccessible( true );
 		$filter->setValue( $this->sync, new Filter( $config->getFieldMaps(), $config->getSyncAll() ) );
 
-		// add filter
+		// add mapper
 		$mapper = new \ReflectionProperty( $this->sync, 'mapper' );
 		$mapper->setAccessible( true );
 		$mapper->setValue( $this->sync, new Mapper( $config->getFieldMaps() ) );
+
+		// add lock path
+		$lockRoot = new \ReflectionProperty( $this->sync, 'lockRoot' );
+		$lockRoot->setAccessible( true );
+		$lockRoot->setValue( $this->sync, storage_path() . '/locks' );
+
+		// add lock path
+		$lockFile = new \ReflectionProperty( $this->sync, 'lockFile' );
+		$lockFile->setAccessible( true );
+		$lockFile->setValue( $this->sync, "{$lockRoot->getValue($this->sync)}/{$configName->getValue($this->sync)}.lock" );
 
 		// replace the mailchimp client with one with secure but real credentials
 		$mailchimpClient = new \ReflectionProperty( $this->sync, 'mailchimpClient' );

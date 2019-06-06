@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 class CrmToMailchimpSynchronizer {
+	private const LOCK_BASE_FOLDER_NAME = 'locks';
+
 	/**
 	 * @var Config
 	 */
@@ -48,6 +50,16 @@ class CrmToMailchimpSynchronizer {
 	private $mapper;
 
 	/**
+	 * @var string
+	 */
+	private $lockRoot;
+
+	/**
+	 * @var string
+	 */
+	private $lockFile;
+
+	/**
 	 * Synchronizer constructor.
 	 *
 	 * @param string $configFileName file name of the config file
@@ -67,6 +79,9 @@ class CrmToMailchimpSynchronizer {
 
 		$this->filter = new Filter( $this->config->getFieldMaps(), $this->config->getSyncAll() );
 		$this->mapper = new Mapper( $this->config->getFieldMaps() );
+
+		$this->lockRoot = storage_path() . '/' . self::LOCK_BASE_FOLDER_NAME;
+		$this->lockFile = "{$this->lockRoot}/{$this->configName}.lock";
 	}
 
 	/**
@@ -79,24 +94,43 @@ class CrmToMailchimpSynchronizer {
 	 * To keep track of the changes already synced, the revision id of
 	 * the crm is used in conjunction with this app's revision model.
 	 *
+	 * This method prevents concurrent runs with the same config,
+	 * to eliminate race conditions on the records to sync and to
+	 * avoid to start the same sync job from the same revision
+	 * multiple times if one is still running.
+	 *
 	 * @param int $limit number of records to sync at a time
 	 * @param int $offset number of records to skip
+	 * @param bool $all sync all records, not just changes
 	 *
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
 	 * @throws RequestException
 	 * @throws \Exception
 	 */
-	public function syncAllChanges( int $limit = 100, int $offset = 0 ) {
+	public function syncAllChanges( int $limit = 100, int $offset = 0, bool $all = false ) {
+		if ( ! $this->lock() ) {
+			Log::info( "There is already a synchronization for {$this->configName} running. Start of new sync job canceled." );
+
+			return;
+		}
+
 		// get revision id of last successful sync (or -1 if first run)
 		$revId = $this->getLatestSuccessfullSyncRevisionId();
 
+		// sync all records instead of changes if all flag is set
+		if ( $all ) {
+			$revId = - 1;
+		}
+
 		if ( 0 === $offset ) {
-			Log::debug( sprintf(
-				"Starting to sync all changes from crm into mailchimp\nConfig: %s\nId of last successfully synced revision: %d",
-				$this->configName,
-				$revId
-			) );
+			Log::debug( "Starting to sync all changes from crm into mailchimp\nConfig: {$this->configName}" );
+
+			if ( - 1 === $revId ) {
+				Log::debug( "Syncing all records regardless of changes." );
+			} else {
+				Log::debug( "Id of last successfully synced revision: $revId" );
+			}
 
 			// get latest revision id and store it in the local database
 			$this->openNewRevision();
@@ -111,6 +145,7 @@ class CrmToMailchimpSynchronizer {
 			if ( empty( $crmData ) ) {
 				Log::debug( "Everything synced." );
 				$this->closeOpenRevision();
+				$this->unlock();
 				Log::debug( "Sync for config {$this->configName} successful." );
 
 				return;
@@ -132,6 +167,47 @@ class CrmToMailchimpSynchronizer {
 			// get next batch
 			$offset += $limit;
 		}
+	}
+
+	/**
+	 * Lock process with this config file. If already locked, false is returned.
+	 *
+	 * We bind it to the config file, so only one process per config can sync at a
+	 * time, but if there are multiple different configs, they may sync at in parallel.
+	 *
+	 * Since we can't use semaphores (hosting too cheap), we fallback to the folder
+	 * trick, to prevent any race conditions.
+	 *
+	 * @return bool
+	 *
+	 * @throws \Exception
+	 */
+	public function lock(): bool {
+		if ( ! is_dir( $this->lockRoot ) ) {
+			$create = mkdir( $this->lockRoot, 0751 );
+			if ( ! $create ) {
+				throw new \Exception( 'Lock folder did not exist and could not be created.' );
+			}
+		}
+
+		// this is only for the sake of nice messages
+		if ( is_dir( $this->lockFile ) ) {
+			return false;
+		}
+
+		// there is a small race condition here, but it affects only the error message
+		// the mkdir is race condition free and kills the process if the file exists.
+
+		$lock = mkdir( $this->lockFile, 0700 );
+
+		return $lock;
+	}
+
+	/**
+	 * Remove lock folder.
+	 */
+	public function unlock() {
+		rmdir( "{$this->lockRoot}/{$this->configName}.lock" );
 	}
 
 	/**
