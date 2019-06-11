@@ -4,6 +4,7 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\AlreadyInListException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
@@ -251,11 +252,11 @@ class CrmToMailchimpSynchronizer {
 	 * @param int $crmId
 	 * @param array|null $crmData
 	 *
+	 * @throws EmailComplianceException
+	 * @throws MailchimpClientException
+	 * @throws MemberDeleteException
 	 * @throws \App\Exceptions\ConfigException
 	 * @throws \App\Exceptions\ParseCrmDataException
-	 * @throws \App\Exceptions\MailchimpClientException
-	 * @throws \App\Exceptions\EmailComplianceException
-	 * @throws \App\Exceptions\MemberDeleteException
 	 */
 	private function syncSingle( int $crmId, $crmData ) {
 		Log::debug( "Start syncing record with id: $crmId" );
@@ -329,6 +330,20 @@ class CrmToMailchimpSynchronizer {
 			Log::debug( "Record synchronized to mailchimp." );
 		} catch ( InvalidEmailException $e ) {
 			Log::info( "INVALID EMAIL. Record skipped." );
+		} catch ( AlreadyInListException $e ) {
+			// it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
+			// if this is the case, we should find the subscriber in mailchimp and use this id
+			$matches = $this->mailchimpClient->findSubscriber( $email );
+			if ( 1 === $matches['exact_matches']['total_items'] ) {
+				$id = $matches['exact_matches']['members'][0]['id'];
+				/** @noinspection PhpUnhandledExceptionInspection */
+				$this->mailchimpClient->putSubscriber( $mcRecord, null, $id );
+
+				$calculatedId = MailChimpClient::calculateSubscriberId( $email );
+				Log::debug( "Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow." );
+			} else {
+				Log::warning( "Mailchimp claims member is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage() );
+			}
 		}
 	}
 
@@ -368,7 +383,7 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function deleteOpenRevisions() {
 		$openRevisions = Revision::where( 'config_name', $this->configName )
-		                         ->where( 'sync_successful', false );
+			->where( 'sync_successful', false );
 
 		$count = $openRevisions->count();
 
@@ -388,9 +403,9 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function closeOpenRevision() {
 		$revision = Revision::where( 'config_name', $this->configName )
-		                    ->where( 'sync_successful', false )
-		                    ->latest()
-		                    ->firstOrFail(); // else die hard
+			->where( 'sync_successful', false )
+			->latest()
+			->firstOrFail(); // else die hard
 
 		$revision->sync_successful = true;
 		$revision->save();
@@ -410,9 +425,9 @@ class CrmToMailchimpSynchronizer {
 	private function getLatestSuccessfullSyncRevisionId(): int {
 		try {
 			return Revision::where( 'config_name', $this->configName )
-			               ->where( 'sync_successful', true )
-			               ->latest()
-			               ->firstOrFail()
+				->where( 'sync_successful', true )
+				->latest()
+				->firstOrFail()
 				->revision_id;
 		} catch ( ModelNotFoundException $e ) {
 			return - 1;
