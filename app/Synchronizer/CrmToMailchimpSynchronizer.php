@@ -197,10 +197,12 @@ class CrmToMailchimpSynchronizer {
 		// lockfile wasn't deleted.
 		if ( is_dir( $this->lockFile ) ) {
 			$lastMod = filemtime( $this->lockFile );
-			if ( time() - $lastMod > self::MAX_LOCK_TIME ) {
+			$age     = time() - $lastMod;
+			if ( $age > self::MAX_LOCK_TIME ) {
 				rmdir( $this->lockFile );
 				Log::notice( 'Max lock time exceeded. Lockfile deleted.' );
 			} else {
+				Log::debug( "Lockfile created ${age}s ago." );
 				return false;
 			}
 		}
