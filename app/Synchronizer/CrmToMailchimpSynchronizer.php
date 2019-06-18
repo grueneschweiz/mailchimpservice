@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 
 class CrmToMailchimpSynchronizer {
 	private const LOCK_BASE_FOLDER_NAME = 'locks';
+	private const MAX_LOCK_TIME = 129600; // 36h
 
 	/**
 	 * @var Config
@@ -191,9 +192,17 @@ class CrmToMailchimpSynchronizer {
 			}
 		}
 
-		// this is only for the sake of nice messages
+		// delete lockfile if the mack lock time was exceeded
+		// this helps to recover from crashed syncs, where the
+		// lockfile wasn't deleted.
 		if ( is_dir( $this->lockFile ) ) {
-			return false;
+			$lastMod = filemtime( $this->lockFile );
+			if ( time() - $lastMod > self::MAX_LOCK_TIME ) {
+				rmdir( $this->lockFile );
+				Log::notice( 'Max lock time exceeded. Lockfile deleted.' );
+			} else {
+				return false;
+			}
 		}
 
 		// there is a small race condition here, but it affects only the error message
@@ -383,7 +392,7 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function deleteOpenRevisions() {
 		$openRevisions = Revision::where( 'config_name', $this->configName )
-			->where( 'sync_successful', false );
+		                         ->where( 'sync_successful', false );
 
 		$count = $openRevisions->count();
 
@@ -403,9 +412,9 @@ class CrmToMailchimpSynchronizer {
 	 */
 	private function closeOpenRevision() {
 		$revision = Revision::where( 'config_name', $this->configName )
-			->where( 'sync_successful', false )
-			->latest()
-			->firstOrFail(); // else die hard
+		                    ->where( 'sync_successful', false )
+		                    ->latest()
+		                    ->firstOrFail(); // else die hard
 
 		$revision->sync_successful = true;
 		$revision->save();
@@ -425,9 +434,9 @@ class CrmToMailchimpSynchronizer {
 	private function getLatestSuccessfullSyncRevisionId(): int {
 		try {
 			return Revision::where( 'config_name', $this->configName )
-				->where( 'sync_successful', true )
-				->latest()
-				->firstOrFail()
+			               ->where( 'sync_successful', true )
+			               ->latest()
+			               ->firstOrFail()
 				->revision_id;
 		} catch ( ModelNotFoundException $e ) {
 			return - 1;
