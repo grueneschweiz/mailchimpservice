@@ -203,6 +203,7 @@ class CrmToMailchimpSynchronizer {
 				Log::notice( 'Max lock time exceeded. Lockfile deleted.' );
 			} else {
 				Log::debug( "Lockfile created ${age}s ago." );
+
 				return false;
 			}
 		}
@@ -324,36 +325,64 @@ class CrmToMailchimpSynchronizer {
 		// handle records already subscribed to mailchimp
 		// where the email address has changed in the crm
 		if ( $email && $email !== $main['email1'] ) {
-			try {
-				$this->mailchimpClient->putSubscriber( $mcRecord, $email );
-				Log::debug( "Email address has changed in crm. Updated record in mailchimp." );
-			} catch ( InvalidEmailException $e ) {
-				Log::info( "Email address has changed in crm to an INVALID EMAIL. Not updated in Mailchimp." );
-			}
-
-			return;
+			$updateEmail = true;
+			Log::debug( "Email address has changed in crm." );
+		} else {
+			$updateEmail = false;
 		}
 
-		// map crm data to mailchimp data and store them in mailchimp
-		$mcRecord['status'] = 'subscribed'; // handles re-subscriptions
+		// handle re-subscriptions
+		$mcRecord['status'] = 'subscribed';
+
+		// store record in mailchimp
 		try {
-			$this->mailchimpClient->putSubscriber( $mcRecord );
-			Log::debug( "Record synchronized to mailchimp." );
+			$this->putSubscriber( $mcRecord, $email, $updateEmail );
+		} catch ( AlreadyInListException $e ) {
+			Log::warning( "Mailchimp claims subscriber is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage() );
 		} catch ( InvalidEmailException $e ) {
 			Log::info( "INVALID EMAIL. Record skipped." );
+		}
+	}
+
+	/**
+	 * Upsert the record in mailchimp.
+	 *
+	 * Handle the edge case, where the subscriber id differs from the lowercase
+	 * email md5-hash. Why this occurs sometimes is an unresolved issue.
+	 *
+	 * @param array $mcRecord
+	 * @param string $email
+	 * @param bool $updateEmail
+	 *
+	 * @throws AlreadyInListException If subscriber is in list with a different
+	 *   id, but the issue could not be resolved automatically.
+	 * @throws EmailComplianceException If the subscriber has unsubscribed and
+	 *   is therefore blocked by mailchimp.
+	 * @throws InvalidEmailException If the email address wasn't accepted by
+	 *   Mailchimp.
+	 * @throws MailchimpClientException On a connection error.
+	 */
+	private function putSubscriber( array $mcRecord, string $email, bool $updateEmail ) {
+		try {
+			if ( $updateEmail ) {
+				$this->mailchimpClient->putSubscriber( $mcRecord, $email );
+			} else {
+				$this->mailchimpClient->putSubscriber( $mcRecord );
+			}
+			Log::debug( "Record synchronized to mailchimp." );
 		} catch ( AlreadyInListException $e ) {
 			// it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
 			// if this is the case, we should find the subscriber in mailchimp and use this id
 			$matches = $this->mailchimpClient->findSubscriber( $email );
 			if ( 1 === $matches['exact_matches']['total_items'] ) {
 				$id = $matches['exact_matches']['members'][0]['id'];
-				/** @noinspection PhpUnhandledExceptionInspection */
+
 				$this->mailchimpClient->putSubscriber( $mcRecord, null, $id );
 
 				$calculatedId = MailChimpClient::calculateSubscriberId( $email );
 				Log::debug( "Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow." );
 			} else {
-				Log::warning( "Mailchimp claims member is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage() );
+				throw $e;
 			}
 		}
 	}
