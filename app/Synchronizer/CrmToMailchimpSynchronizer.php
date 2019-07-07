@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 
 class CrmToMailchimpSynchronizer {
 	private const LOCK_BASE_FOLDER_NAME = 'locks';
-	private const MAX_LOCK_TIME = 86400; // 24h
+	private const MAX_LOCK_TIME = 43200; // 12h
 
 	/**
 	 * @var Config
