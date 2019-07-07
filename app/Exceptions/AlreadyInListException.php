@@ -19,6 +19,6 @@ class AlreadyInListException extends \Exception {
 	 * @return \Illuminate\Http\Response
 	 */
 	public function render( $request ) {
-		abort( 500, "Invalid payload: " . $this->getMessage() );
+		abort( 500, "Already in list: " . $this->getMessage() );
 	}
 }
