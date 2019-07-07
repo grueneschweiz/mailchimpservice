@@ -192,7 +192,7 @@ class CrmToMailchimpSynchronizer {
 			}
 		}
 
-		// delete lockfile if the mack lock time was exceeded
+		// delete lockfile if the max lock time was exceeded
 		// this helps to recover from crashed syncs, where the
 		// lockfile wasn't deleted.
 		if ( is_dir( $this->lockFile ) ) {
