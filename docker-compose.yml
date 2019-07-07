@@ -58,13 +58,3 @@ services:
     ports:
       - '9020:9025'
     container_name: wsmailhog_mailchimp
-
-  node:
-    image: node
-    working_dir: /home/node/app
-    volumes:
-      - ./:/home/node/app
-    ports:
-      - '9030:9081'
-    command: npm run watch
-    container_name: wsnode_mailchimp
