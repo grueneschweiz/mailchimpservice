@@ -19,7 +19,7 @@ and start contributing 😍.
 1. Clone this repo `git clone https://github.com/grueneschweiz/mailchimpservice.git`
 1. `cd` into the folder containing the repo
 1. Execute `docker-compose -f docker-compose.install.yml up` and have a ☕️ while 
-it installs. `wsnode_install_mailchimp` and `wscomposer_install_mailchimp` should exit with `code 0`.
+it installs. `wscomposer_install_mailchimp` should exit with `code 0`.
 1. Execute `docker-compose -f docker-compose.install.yml run composer 
 cp .env.example .env && php artisan key:generate` to generate the app secrets
 1. Execute `docker-compose up -d` to start up the stack. The first time you run
@@ -36,9 +36,6 @@ get a connection error, wait 30 seconds then try again.
 run composer composer require DEPENDENCY` (yes, `composer composer` is correct,
 the first one defines the container to start the second one is the command to
 execute)
-- Add dependency from npm: `docker-compose -f docker-compose.install.yml 
-run node npm --install DEPENDENCY` (You may want to use --save or --save-dev as
-well. Check out the [Docs](https://docs.npmjs.com/cli/install).)
 
 ### Testing
 In the main folder run `php vendor/phpunit/phpunit/phpunit tests` to run the tests locally.
@@ -50,9 +47,3 @@ All mail you send out of the application will be caught by [Mailhog](http://loca
 #### MySQL
 Use the handy [phpMyAdmin](http://localhost:9010) or access the mysql CLI using
 `docker exec -it wsmysql mysql --user=laravel --password=laravel laravel` 
-
-#### Laravel mix
-Works out of the box ☺️
-
-#### NPM
-Access the watching container using `docker exec -it wsnode bash`
