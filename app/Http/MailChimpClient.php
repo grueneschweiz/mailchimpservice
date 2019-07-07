@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Exceptions\AlreadyInListException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
@@ -171,14 +172,16 @@ class MailChimpClient {
 	 *
 	 * @param array $mcData
 	 * @param string $email provide email to update subscribers email address
+	 * @param string $id the mailchimp id of the subscriber
 	 *
 	 * @return array|false
 	 * @throws \InvalidArgumentException
 	 * @throws InvalidEmailException
 	 * @throws MailchimpClientException
 	 * @throws EmailComplianceException
+	 * @throws AlreadyInListException
 	 */
-	public function putSubscriber( array $mcData, string $email = null ) {
+	public function putSubscriber( array $mcData, string $email = null, string $id = null ) {
 		if ( empty( $mcData['email_address'] ) ) {
 			throw new \InvalidArgumentException( 'Missing email_address.' );
 		}
@@ -191,7 +194,11 @@ class MailChimpClient {
 			$email = $mcData['email_address'];
 		}
 
-		$id = self::calculateSubscriberId( $email );
+		// it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
+		// so we need a possibility to provide it manually.
+		if ( ! $id ) {
+			$id = self::calculateSubscriberId( $email );
+		}
 
 		$put = $this->client->put( "lists/{$this->listId}/members/$id", $mcData );
 
@@ -204,6 +211,11 @@ class MailChimpClient {
 		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
 			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'compliance state' ) ) {
 				throw new EmailComplianceException( $put['detail'] );
+			}
+		}
+		if ( isset( $put['status'] ) && is_numeric( $put['status'] ) && $put['status'] !== 200 ) {
+			if ( isset( $put['detail'] ) && strpos( $put['detail'], 'is already a list member' ) ) {
+				throw new AlreadyInListException( $put['detail'] );
 			}
 		}
 		$this->validateResponseContent( 'PUT subscriber', $put );
@@ -327,5 +339,26 @@ class MailChimpClient {
 		$email = strtolower( $email );
 
 		return md5( $email );
+	}
+
+	/**
+	 * Search subscriber by email
+	 *
+	 * @see https://developer.mailchimp.com/documentation/mailchimp/reference/search-members/
+	 *
+	 * @param string $email
+	 *
+	 * @return array|false
+	 *
+	 * @throws MailchimpClientException
+	 */
+	public function findSubscriber( string $email ) {
+		$email = urlencode( $email );
+		$get   = $this->client->get( "search-members?query=$email" );
+
+		$this->validateResponseStatus( 'GET search subscriber', $get );
+		$this->validateResponseContent( 'GET search subscriber', $get );
+
+		return $get;
 	}
 }
