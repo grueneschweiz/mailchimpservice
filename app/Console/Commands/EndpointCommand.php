@@ -7,6 +7,7 @@ use App\Exceptions\ConfigException;
 use App\MailchimpEndpoint;
 use App\Synchronizer\Config;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 abstract class EndpointCommand extends Command {
 	public const MC_ENDPOINT_ROUTE_NAME = 'mailchimp_endpoint';
@@ -85,6 +86,6 @@ abstract class EndpointCommand extends Command {
 	 * @return string
 	 */
 	protected function getNewEndpointSecret() {
-		return str_random( 22 ); // 62^22 > 2^128
+        return Str::random(22); // 62^22 > 2^128
 	}
 }

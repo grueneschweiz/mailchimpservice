@@ -10,6 +10,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CrmClientTest extends TestCase {
@@ -48,7 +49,7 @@ class CrmClientTest extends TestCase {
 				'mode'  => 'append'
 			],
 			'email1'    => [
-				'value' => 'unittest+' . str_random() . '@unittest.ut',
+                'value' => 'unittest+' . Str::random() . '@unittest.ut',
 				'mode'  => 'replace'
 			],
 			'groups'    => [
@@ -81,7 +82,7 @@ class CrmClientTest extends TestCase {
 	}
 
 	public function testPut() {
-		$email2 = 'unittest_update+' . str_random() . '@unittest.ut';
+        $email2 = 'unittest_update+' . Str::random() . '@unittest.ut';
 
 		$m = [
 			'firstName' => [
@@ -93,7 +94,7 @@ class CrmClientTest extends TestCase {
 				'mode'  => 'append'
 			],
 			'email1'    => [
-				'value' => 'unittest+' . str_random() . '@unittest.ut',
+                'value' => 'unittest+' . Str::random() . '@unittest.ut',
 				'mode'  => 'replace'
 			],
 			'groups'    => [

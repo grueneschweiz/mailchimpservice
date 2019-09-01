@@ -15,6 +15,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MailchimpToCrmSynchronizerTest extends TestCase {
@@ -100,7 +101,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 	public function testSyncSingle__subscribe() {
 		// config
 		Mail::fake();
-		$email = str_random() . '@mymail.com';
+        $email = Str::random() . '@mymail.com';
 		$crmId = 123456;
 
 		// precondition
@@ -156,7 +157,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 
 	public function testSyncSingle__unsubscribe() {
 		// config
-		$email = str_random() . '@mymail.com';
+        $email = Str::random() . '@mymail.com';
 		$crmId = 123456;
 
 		// precondition
@@ -194,7 +195,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 	}
 
 	public function testSyncSingle__bounced() {
-		$email = str_random() . '@mymail.com';
+        $email = Str::random() . '@mymail.com';
 		$crmId = random_int( 10 ** 6, 10 ** 7 );
 
 		// precondition
@@ -251,7 +252,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 
 	public function testSyncSingle__updated() {
 		// config
-		$email  = str_random() . '@mymail.com';
+        $email = Str::random() . '@mymail.com';
 		$crmId  = 123456;
 		$member = $this->getMember( $crmId, $email );
 
@@ -314,7 +315,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 
 	public function testSyncSingle__emailUpdated() {
 		// config
-		$email    = str_random() . '@mymail.com';
+        $email = Str::random() . '@mymail.com';
 		$newEmail = 'u-' . $email;
 		$crmId    = 123456;
 		$member   = $this->getMember( $crmId, $email );

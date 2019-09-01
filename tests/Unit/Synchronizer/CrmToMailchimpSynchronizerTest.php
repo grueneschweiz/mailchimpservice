@@ -12,6 +12,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CrmToMailchimpSynchronizerTest extends TestCase {
@@ -84,7 +85,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->mcClientTesting = $mailchimpClient->getValue( $this->sync );
 
 		$this->emailMember1 = str_random() . '@mymail.com';
-		$this->emailMember2 = str_random() . '@mymail.com';
+        $this->emailMember2 = Str::random() . '@mymail.com';
 	}
 
 	private function mockCrmResponse( array $responses ) {
@@ -189,8 +190,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_email_change() {
 		// precondition
 		$revisionId = 126;
-
-		$email   = str_random() . '@mymail.com';
+        
+        $email = Str::random() . '@mymail.com';
 		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
@@ -208,7 +209,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 		$this->assertNotEmpty( $subscriber1 );
 
 		// the test
-		$member1['email1'] = str_random() . '@mymail.com';
+        $member1['email1'] = Str::random() . '@mymail.com';
 		$member1['group']  = 'ZH';
 
 		$this->mockCrmResponse( [
@@ -259,8 +260,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_tag_change() {
 		// precondition
 		$revisionId = 126;
-
-		$email   = str_random() . '@mymail.com';
+        
+        $email = Str::random() . '@mymail.com';
 		$member1 = $this->getMember( $email );
 
 		// make sure there is no member with this id
@@ -313,8 +314,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_resubscribe() {
 		// precondition
 		$revisionId = 127;
-
-		$email   = str_random() . '@mymail.com';
+        
+        $email = Str::random() . '@mymail.com';
 		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
@@ -358,8 +359,8 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	public function testSyncAllChanges_delete_fromRevision() {
 		// precondition
 		$revisionId = 130;
-
-		$email   = str_random() . '@mymail.com';
+        
+        $email = Str::random() . '@mymail.com';
 		$member1 = $this->getMember( $email );
 
 		$this->mockCrmResponse( [
