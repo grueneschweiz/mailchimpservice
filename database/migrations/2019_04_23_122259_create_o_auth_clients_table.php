@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 class CreateOAuthClientsTable extends Migration
 {
@@ -14,14 +14,14 @@ class CreateOAuthClientsTable extends Migration
     public function up()
     {
         Schema::create('o_auth_clients', function (Blueprint $table) {
-	        $table->unsignedInteger('client_id')->unique();
+            $table->unsignedInteger('client_id')->unique();
             $table->string('client_secret');
             $table->text('token')->nullable()->default(null);
-
+    
             $table->timestamps();
         });
     }
-
+    
     /**
      * Reverse the migrations.
      *

@@ -9,16 +9,18 @@
 namespace App\Exceptions;
 
 
-class InvalidEmailException extends \Exception {
-
-	/**
-	 * Render the exception into an HTTP response.
-	 *
-	 * @param \Illuminate\Http\Request
-	 *
-	 * @return \Illuminate\Http\Response
-	 */
-	public function render( $request ) {
-		abort( 500, "Invalid payload: " . $this->getMessage() );
-	}
+class InvalidEmailException extends \Exception
+{
+    
+    /**
+     * Render the exception into an HTTP response.
+     *
+     * @param \Illuminate\Http\Request
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function render($request)
+    {
+        abort(500, "Invalid payload: " . $this->getMessage());
+    }
 }

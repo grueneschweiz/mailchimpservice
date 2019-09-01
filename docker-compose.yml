@@ -13,32 +13,32 @@ services:
       - .docker/apache-vhost.conf:/etc/apache2/sites-available/custom-vhost.conf
     container_name: wsapp_mailchimp
     environment:
-        DB_HOST: mysql
-        DB_DATABASE: mailchimp
-        DB_USERNAME: mailchimp
-        DB_PASSWORD: mailchimp
-        DB_PORT: 3306
-        # play with mailhog
-        MAIL_HOST: mailhog
-        MAIL_PORT: 1025
-        MAIL_USERNAME: null
-        MAIL_PASSWORD: null
-        MAIL_ENCRYPTION: null
+      DB_HOST: mysql
+      DB_DATABASE: mailchimp
+      DB_USERNAME: mailchimp
+      DB_PASSWORD: mailchimp
+      DB_PORT: 3306
+      # play with mailhog
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_USERNAME: null
+      MAIL_PASSWORD: null
+      MAIL_ENCRYPTION: null
     depends_on:
       - mysql
 
   mysql:
-    image: mysql:5.6
+    image: mysql:5.7
     ports:
-        - '4307:3306'
+      - '4307:3306'
     volumes:
-        - .docker/mysql/data:/var/lib/mysql
+      - .docker/mysql/data:/var/lib/mysql
     restart: always
     environment:
-        MYSQL_ROOT_PASSWORD: root
-        MYSQL_DATABASE: mailchimp
-        MYSQL_USER: mailchimp
-        MYSQL_PASSWORD: mailchimp
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mailchimp
+      MYSQL_USER: mailchimp
+      MYSQL_PASSWORD: mailchimp
     container_name: wsmysql_mailchimp
 
   phpmyadmin:
