@@ -12,7 +12,7 @@ class ConfigTest extends TestCase {
 	 */
 	private $config;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		config( [ 'app.config_base_path' => 'tests' ] );

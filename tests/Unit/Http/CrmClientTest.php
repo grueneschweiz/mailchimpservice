@@ -18,7 +18,7 @@ class CrmClientTest extends TestCase {
 	/** @var CrmClient */
 	private $client;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$ref = new \ReflectionClass( CrmClient::class );

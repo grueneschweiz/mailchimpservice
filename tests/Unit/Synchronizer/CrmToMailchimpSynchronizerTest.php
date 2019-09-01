@@ -32,7 +32,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase {
 	private $emailMember1;
 	private $emailMember2;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		// crm client prepare access token

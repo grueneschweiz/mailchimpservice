@@ -17,14 +17,14 @@ class RestControllerTest extends TestCase {
 	 */
 	private $endpoint;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		config( [ 'app.config_base_path' => 'tests' ] );
 		$this->endpoint = new EndpointHelper( self::CONFIG_FILE_NAME );
 	}
 
-	public function tearDown() {
+	public function tearDown(): void {
 		$this->endpoint->delete();
 
 		parent::tearDown();

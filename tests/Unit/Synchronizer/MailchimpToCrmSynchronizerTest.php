@@ -44,7 +44,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase {
 	 */
 	private $crmRequestHistory = [];
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		// crm client prepare access token
