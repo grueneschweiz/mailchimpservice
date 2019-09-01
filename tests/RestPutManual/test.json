@@ -1,7 +1,7 @@
 {
-  "key1":"value1",
-  "key2":"value2",
-  "EMAIL":"testmann@mueller.ch",
-  "FNAME":"Der erste Name",
-  "LNAME":"Der letzte Name"
+  "key1": "value1",
+  "key2": "value2",
+  "EMAIL": "testmann@mueller.ch",
+  "FNAME": "Der erste Name",
+  "LNAME": "Der letzte Name"
 }

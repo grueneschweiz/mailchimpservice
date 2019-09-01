@@ -15,12 +15,12 @@ class CreateMailchimpEndpointsTable extends Migration
     {
         Schema::create('mailchimp_endpoints', function (Blueprint $table) {
             $table->increments('id');
-	        $table->string( 'secret' )->unique();
+            $table->string('secret')->unique();
             $table->string('config');
             $table->timestamps();
         });
     }
-
+    
     /**
      * Reverse the migrations.
      *
