@@ -95,11 +95,15 @@ class MailchimpToCrmSynchronizer
         
         switch ($callType) {
             case self::MC_SUBSCRIBE:
-                // send mail to dataOwner, that he should
-                // add the subscriber to webling not mailchimp
                 $mcData = $this->mcClient->getSubscriber($email);
-                $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
-                Log::debug('MC_SUBSCRIBE: Inform data owner.');
+    
+                // if there is no crm id
+                if (empty($mcData['data']['merges'][$this->config->getMailchimpKeyOfCrmId()])) {
+                    // send mail to dataOwner, that he should
+                    // add the subscriber to webling not mailchimp
+                    $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
+                    Log::debug('MC_SUBSCRIBE: Inform data owner.');
+                }
                 
                 return;
             
