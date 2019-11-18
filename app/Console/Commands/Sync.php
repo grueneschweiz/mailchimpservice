@@ -22,7 +22,8 @@ class Sync extends Command
                             {config : The name of the config file to use.}
                             {--limit=100 : How may records should be syncronized at a time.}
                             {--offset=0 : How many records should be skipped. Usually used in combination with --limit.}
-                            {--all : Ignore revision and sync all records, not just changes.}';
+                            {--all : Ignore revision and sync all records, not just changes.}
+                            {--force : Ignore locks of previously started (running or dead) sync processes.}';
     
     /**
      * The console command description.
@@ -88,6 +89,7 @@ class Sync extends Command
         $limit = $this->option('limit');
         $offset = $this->option('offset');
         $all = $this->option('all');
+        $force = $this->option('force');
         
         if (!is_numeric($limit) || (int)$limit <= 0) {
             $this->error('The limit option must pass an integer > 0.');
@@ -103,6 +105,12 @@ class Sync extends Command
         
         try {
             $sync = new CrmToMailchimpSynchronizer($this->argument('config'));
+    
+            if ($force) {
+                $this->info('Force sync -> removing locks now.');
+                $sync->unlock();
+            }
+            
             $this->info('Syncing... please be patient!');
             
             try {
