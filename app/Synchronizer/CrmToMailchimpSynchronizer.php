@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
@@ -459,6 +460,7 @@ class CrmToMailchimpSynchronizer
      * @throws InvalidEmailException If the email address wasn't accepted by
      *   Mailchimp.
      * @throws MailchimpClientException On a connection error.
+     * @throws MemberDeleteException If the deletion of a cleaned record failed.
      */
     private function putSubscriber(array $mcRecord, string $email, bool $updateEmail)
     {
@@ -475,14 +477,22 @@ class CrmToMailchimpSynchronizer
             $matches = $this->mailchimpClient->findSubscriber($email);
             if (1 === $matches['exact_matches']['total_items']) {
                 $id = $matches['exact_matches']['members'][0]['id'];
-                
+        
                 $this->mailchimpClient->putSubscriber($mcRecord, null, $id);
-                
+        
                 $calculatedId = MailChimpClient::calculateSubscriberId($email);
                 Log::debug("Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow.");
             } else {
                 throw $e;
             }
+        } catch (CleanedEmailException $e) {
+            if (!$updateEmail) {
+                Log::info("This email-address was cleaned an no new email address was provided. Update aborted.");
+                return;
+            }
+    
+            $this->mailchimpClient->deleteSubscriber($email); // delete record with old email
+            $this->putSubscriber($mcRecord, null, false); // then create a new one with the new email address
         }
     }
 }

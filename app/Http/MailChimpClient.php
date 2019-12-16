@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
@@ -204,6 +205,7 @@ class MailChimpClient
      * @throws MailchimpClientException
      * @throws EmailComplianceException
      * @throws AlreadyInListException
+     * @throws CleanedEmailException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -232,13 +234,12 @@ class MailChimpClient
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
                 throw new InvalidEmailException($put['errors'][0]['message']);
             }
-        }
-        if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
+            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) {
+                throw new CleanedEmailException($put['errors'][0]['message']);
+            }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
             }
-        }
-        if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
             if (isset($put['detail']) && strpos($put['detail'], 'is already a list member')) {
                 throw new AlreadyInListException($put['detail']);
             }
