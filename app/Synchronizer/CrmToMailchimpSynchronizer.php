@@ -491,8 +491,13 @@ class CrmToMailchimpSynchronizer
                 return;
             }
     
-            $this->mailchimpClient->deleteSubscriber($email); // delete record with old email
-            $this->putSubscriber($mcRecord, null, false); // then create a new one with the new email address
+            // delete record with old email (mailchimp doesn't allow to simply
+            // delete (=archive) cleaned records, so we have to delete it
+            // permanently).
+            $this->mailchimpClient->permanentlyDeleteSubscriber($email);
+    
+            // then create a new one with the new email address
+            $this->putSubscriber($mcRecord, null, false);
         }
     }
 }

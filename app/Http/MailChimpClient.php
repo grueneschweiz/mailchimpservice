@@ -345,7 +345,7 @@ class MailChimpClient
     {
         $id = self::calculateSubscriberId($email);
         $delete = $this->client->delete("lists/{$this->listId}/members/$id");
-        
+    
         $this->validateResponseStatus('DELETE subscriber', $delete);
         if (isset($delete['status']) && is_numeric($delete['status']) && $delete['status'] !== 200) {
             if (isset($delete['detail']) && strpos($delete['detail'], 'member cannot be removed')) {
@@ -353,6 +353,22 @@ class MailChimpClient
             }
         }
         $this->validateResponseContent('DELETE subscriber', $delete);
+    }
+    
+    /**
+     * Delete subscriber permanently
+     *
+     * @param string $email
+     *
+     * @throws MailchimpClientException
+     */
+    public function permanentlyDeleteSubscriber(string $email)
+    {
+        $id = self::calculateSubscriberId($email);
+        $delete = $this->client->delete("lists/{$this->listId}/members/$id/actions/delete-permanent");
+        
+        $this->validateResponseStatus('DELETE subscriber permanently', $delete);
+        $this->validateResponseContent('DELETE subscriber permanently', $delete);
     }
     
     /**
