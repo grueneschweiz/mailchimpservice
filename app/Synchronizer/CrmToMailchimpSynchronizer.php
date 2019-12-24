@@ -497,7 +497,7 @@ class CrmToMailchimpSynchronizer
             $this->mailchimpClient->permanentlyDeleteSubscriber($email);
     
             // then create a new one with the new email address
-            $this->putSubscriber($mcRecord, null, false);
+            $this->putSubscriber($mcRecord, "", false);
         }
     }
 }
