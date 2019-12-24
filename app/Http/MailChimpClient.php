@@ -365,7 +365,7 @@ class MailChimpClient
     public function permanentlyDeleteSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        $delete = $this->client->delete("lists/{$this->listId}/members/$id/actions/delete-permanent");
+        $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent");
         
         $this->validateResponseStatus('DELETE subscriber permanently', $delete);
         $this->validateResponseContent('DELETE subscriber permanently', $delete);
