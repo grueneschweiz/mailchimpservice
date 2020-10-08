@@ -254,20 +254,32 @@ class CrmToMailchimpSynchronizer
      * Add current crm revision id to the database, marked as none synced
      *
      * Make sure there is only one open revision per user. (if there were
-     * existing ones, a previous sync must have failed. lets resync all
-     * records then, so we have a self healing approach).
+     * existing ones, a previous sync must have failed. lets resume the it
+     * then, so we have a self-healing approach).
      *
      * @throws RequestException
      */
     private function openNewRevision()
     {
-        // delete old open revisions (from failed syncs)
-        $this->deleteOpenRevisions();
+        // try to resume
+        try {
+            $latestRev = $this->getOpenRevision();
         
+            Log::info(sprintf(
+                'Resuming revision %d for config %s',
+                $latestRev->revision_id,
+                $this->configName
+            ));
+        
+            return;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // we don't have an open revision so there is nothing to resume
+        }
+    
         // get current revision id from crm
         $get = $this->crmClient->get('revision');
         $latestRevId = (int)json_decode((string)$get->getBody());
-        
+    
         // add current revision
         $latestRev = new Revision();
         $latestRev->config_name = $this->configName;
@@ -280,27 +292,6 @@ class CrmToMailchimpSynchronizer
             $latestRev->revision_id,
             $this->configName
         ));
-    }
-    
-    /**
-     * Delete all open revisions and log it
-     */
-    private function deleteOpenRevisions()
-    {
-        $openRevisions = Revision::where('config_name', $this->configName)
-            ->where('sync_successful', false);
-        
-        $count = $openRevisions->count();
-        
-        if ($count) {
-            $openRevisions->delete();
-            
-            Log::notice(sprintf(
-                '%d failed revisions for config %s were deleted.',
-                $count,
-                $this->configName
-            ));
-        }
     }
     
     /**
@@ -323,6 +314,8 @@ class CrmToMailchimpSynchronizer
      * Get the revision we're currently working on
      *
      * @return Revision|\Illuminate\Database\Eloquent\Model
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
     private function getOpenRevision()
     {
