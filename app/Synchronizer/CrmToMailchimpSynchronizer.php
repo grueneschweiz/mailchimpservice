@@ -169,7 +169,9 @@ class CrmToMailchimpSynchronizer
             // sync members to mailchimp
             // don't use mailchimps batch operations, because they are async
             foreach ($crmData as $crmId => $record) {
-                if (!$this->alreadySynced($crmId)) {
+                if ($this->alreadySynced($crmId)) {
+                    Log::debug("Record with id $crmId already synced. Skipping.");
+                } else {
                     $this->syncSingleRetry($crmId, $record);
                 }
             }
