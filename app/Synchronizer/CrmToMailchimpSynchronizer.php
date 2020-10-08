@@ -13,6 +13,7 @@ use App\Exceptions\MemberDeleteException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
+use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -62,6 +63,14 @@ class CrmToMailchimpSynchronizer
      * @var string
      */
     private $lockFile;
+    
+    /**
+     * The id of the current revision entry in the local DB (not the crm's
+     * revision number)
+     *
+     * @var int
+     */
+    private $internalRevisionId;
     
     /**
      * Synchronizer constructor.
@@ -156,11 +165,13 @@ class CrmToMailchimpSynchronizer
                 
                 return;
             }
-            
+    
             // sync members to mailchimp
+            // don't use mailchimps batch operations, because they are async
             foreach ($crmData as $crmId => $record) {
-                // don't use mailchimps batch operations, because they are async
-                $this->syncSingleRetry($crmId, $record);
+                if (!$this->alreadySynced($crmId)) {
+                    $this->syncSingleRetry($crmId, $record);
+                }
             }
             
             Log::debug(sprintf(
@@ -297,19 +308,28 @@ class CrmToMailchimpSynchronizer
      */
     private function closeOpenRevision()
     {
-        $revision = Revision::where('config_name', $this->configName)
-            ->where('sync_successful', false)
-            ->latest()
-            ->firstOrFail(); // else die hard
-        
+        $revision = $this->getOpenRevision();
         $revision->sync_successful = true;
         $revision->save();
-        
+    
         Log::debug(sprintf(
             'Closing revision %d for config %s',
             $revision->revision_id,
             $this->configName
         ));
+    }
+    
+    /**
+     * Get the revision we're currently working on
+     *
+     * @return Revision|\Illuminate\Database\Eloquent\Model
+     */
+    private function getOpenRevision()
+    {
+        return Revision::where('config_name', $this->configName)
+            ->where('sync_successful', false)
+            ->latest()
+            ->firstOrFail(); // else die hard
     }
     
     /**
@@ -334,6 +354,7 @@ class CrmToMailchimpSynchronizer
     {
         try {
             $this->syncSingle($crmId, $record);
+            $this->markSynced($crmId);
         } catch (MailchimpClientException $e) {
             switch ($attempt) {
                 case 0:
@@ -499,5 +520,47 @@ class CrmToMailchimpSynchronizer
             // then create a new one with the new email address
             $this->putSubscriber($mcRecord, "", false);
         }
+    }
+    
+    /**
+     * Create a new database entry that marks the given record as already synced
+     * for this revision so it can be skipped if the program runs twice.
+     *
+     * @param int $crmId
+     */
+    private function markSynced(int $crmId)
+    {
+        $sync = new Sync();
+        $sync->crm_id = $crmId;
+        $sync->internal_revision_id = $this->getInternalRevisionId();
+        $sync->save();
+    }
+    
+    /**
+     * The internal id of the current revision entry in the local db
+     *
+     * @return int
+     */
+    private function getInternalRevisionId()
+    {
+        if (!$this->internalRevisionId) {
+            $this->internalRevisionId = $this->getOpenRevision()->id;
+        }
+        
+        return $this->internalRevisionId;
+    }
+    
+    /**
+     * Checks if the given crm entry was already synced for this revision and
+     * this mailchimp instance.
+     *
+     * @param int $crmId
+     * @return bool
+     */
+    private function alreadySynced(int $crmId)
+    {
+        return (bool)Sync::where('crm_id', $crmId)
+            ->where('internal_revision_id', $this->getInternalRevisionId())
+            ->count();
     }
 }
