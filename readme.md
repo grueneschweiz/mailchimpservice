@@ -21,10 +21,10 @@ and start contributing 😍.
 1. Execute `docker-compose -f docker-compose.install.yml up` and have a ☕️ while 
 it installs. `wscomposer_install_mailchimp` should exit with `code 0`.
 1. Execute `docker-compose -f docker-compose.install.yml run composer 
-cp .env.example .env && php artisan key:generate` to generate the app secrets
+cp .env.example .env && php artisan key:generate` to generate the app secrets. You may have to disable the slack log in config/logging.php for this.
 1. Execute `docker-compose up -d` to start up the stack. The first time you run
 this command, it will take a minute or two. Subsequent calls will be much faster.
-1. After a few seconds: Visit [localhost:9000](http://localhost:9000). If you
+1. After a few seconds: Visit [localhost:9001](http://localhost:9001). If you
 get a connection error, wait 30 seconds then try again. 
 
 ### Docker Cheat Sheet
