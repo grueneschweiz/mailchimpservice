@@ -89,13 +89,13 @@ RUN set -eux; \
       exit(1); \
     }" \
   ; \
-  php /tmp/installer.php --no-ansi --install-dir=/usr/bin --filename=composer \
+  php /tmp/installer.php --no-ansi --install-dir=/usr/bin --filename=composer;\
   composer --ansi --version --no-interaction; \
   composer diagnose; \
   rm -f /tmp/installer.php; \
   find /tmp -type d -exec chmod -v 1777 {} +
 
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY .docker/composer/docker-entrypoint.sh /docker-entrypoint.sh
 
 WORKDIR /app
 
