@@ -9,7 +9,7 @@ install:
   - docker-compose stop
 
 script:
-  - docker-compose up -d #for debug
+  - docker-compose up -d # for debug
   - docker-compose run -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY} -e LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
 
 after_success:
