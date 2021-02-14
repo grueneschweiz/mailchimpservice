@@ -10,6 +10,7 @@ install:
 
 script:
   - docker-compose up -d # for debug
+  - sleep 30 # dirty hack, TODO: properly check if the db is up and ready to avoid race condition
   - docker-compose run -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY} -e LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
 
 after_success:
