@@ -3,14 +3,14 @@ services:
 
 install:
   - docker-compose -f docker-compose.install.yml up
-  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer cp .env.travis .env
-  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer php artisan key:generate
-  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer composer require php-coveralls/php-coveralls
+  - docker-compose -f docker-compose.install.yml run composer cp .env.travis .env
+  - docker-compose -f docker-compose.install.yml run composer php artisan key:generate
+  - docker-compose -f docker-compose.install.yml run composer composer require php-coveralls/php-coveralls
   - docker-compose stop
 
 script:
   - docker-compose up -d #for debug
-  - docker-compose run --user $(id -u):$(id -g) -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY} -e LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
+  - docker-compose run -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY} -e LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL} app php /var/www/html/vendor/phpunit/phpunit/phpunit --configuration /var/www/html/phpunit.xml --coverage-clover /var/www/html/build/logs/clover.xml
 
 after_success:
   - travis_retry docker-compose run -e TRAVIS=${TRAVIS} -e TRAVIS_JOB_ID=${TRAVIS_JOB_ID} app php /var/www/html/vendor/bin/php-coveralls -v
