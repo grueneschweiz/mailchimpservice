@@ -3,9 +3,9 @@ services:
 
 install:
   - docker-compose -f docker-compose.install.yml up
-  - docker-compose -f docker-compose.install.yml run composer cp .env.travis .env
-  - docker-compose -f docker-compose.install.yml run composer php artisan key:generate
-  - docker-compose -f docker-compose.install.yml run composer composer require php-coveralls/php-coveralls
+  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer cp .env.travis .env
+  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer php artisan key:generate
+  - docker-compose -f docker-compose.install.yml run --user $(id -u):$(id -g) composer composer require php-coveralls/php-coveralls
   - docker-compose stop
 
 script:
