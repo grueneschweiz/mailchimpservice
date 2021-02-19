@@ -307,6 +307,7 @@ class CrmToMailchimpSynchronizer
         $revision = $this->getOpenRevision();
         $revision->sync_successful = true;
         $revision->save();
+        $this->internalRevisionId = null;
     
         Log::debug(sprintf(
             '(%s) Closing revision %d',
