@@ -31,6 +31,8 @@ jobs:
           docker-compose stop
 
       - name: unit tests and coverage report
+        env:
+          MAILCHIMP_APIKEY: ${{ secrets.MAILCHIMP_APIKEY }}
         run: |
           docker-compose up -d
           sleep 30 # dirty hack, TODO: properly check if the db is up and ready to avoid race condition
