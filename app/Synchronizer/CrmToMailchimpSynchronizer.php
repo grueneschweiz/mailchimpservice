@@ -421,7 +421,7 @@ class CrmToMailchimpSynchronizer
         $main = json_decode((string)$get->getBody(), true);
         $mainId = $main[Config::getCrmIdKey()];
         $email = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$mainId, $mcCrmIdFieldKey);
-        if ($crmId !== $mainId) {
+        if ($crmId != $mainId) { // type coercion wanted
             Log::debug("({$this->configName}) Found main record. ID: $mainId");
         } else {
             Log::debug("({$this->configName}) This record seems to be the main record.");
