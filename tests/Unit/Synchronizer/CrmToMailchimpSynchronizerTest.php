@@ -81,15 +81,23 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $lockFile = new \ReflectionProperty($this->sync, 'lockFile');
         $lockFile->setAccessible(true);
         $lockFile->setValue($this->sync, "{$lockRoot->getValue($this->sync)}/{$configName->getValue($this->sync)}.lock");
-        
+    
         // replace the mailchimp client with one with secure but real credentials
         $mailchimpClient = new \ReflectionProperty($this->sync, 'mailchimpClient');
         $mailchimpClient->setAccessible(true);
         $mailchimpClient->setValue($this->sync, new MailChimpClient(env('MAILCHIMP_APIKEY'), $config->getMailchimpListId()));
         $this->mcClientTesting = $mailchimpClient->getValue($this->sync);
-        
+    
         $this->emailMember1 = Str::random() . '@mymail.com';
         $this->emailMember2 = Str::random() . '@mymail.com';
+    }
+    
+    protected function tearDown()
+    {
+        parent::tearDown();
+        
+        // cleanup after failed tests
+        $this->sync->unlock();
     }
     
     public function testSyncAllChanges_add_all()
