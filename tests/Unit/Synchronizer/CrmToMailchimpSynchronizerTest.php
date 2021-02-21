@@ -9,6 +9,7 @@ use App\Http\MailChimpClient;
 use App\OAuthClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
+use ErrorException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -95,9 +96,12 @@ class CrmToMailchimpSynchronizerTest extends TestCase
     protected function tearDown()
     {
         parent::tearDown();
-        
+    
         // cleanup after failed tests
-        $this->sync->unlock();
+        try {
+            $this->sync->unlock();
+        } catch (ErrorException $e) {
+        }
     }
     
     public function testSyncAllChanges_add_all()
@@ -463,21 +467,25 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             'crm_id' => (int)$member1['id'],
             'internal_revision_id' => $internalRevisionId
         ]);
-        
+    
         // assert member1 is present in mailchimp
         $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
         $this->assertEquals($member1['email1'], $subscriber1['email_address']);
-        
+    
+        // reopen the internal revision (else we can't see, if it was skipped)
+        $internalRevision = Revision::find($internalRevisionId);
+        $internalRevision->sync_successful = false;
+        $internalRevision->save();
+    
         // resync with different email. it should not get synced
         $member1['email1'] = 'changed_' . $member1['email1'];
         $this->mockCrmResponse([
-            new Response(200, [], json_encode($revisionId)),
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
             new Response(200, [], json_encode([])),
         ]);
-        
+    
         $this->sync->syncAllChanges(1, 0);
         
         // assert the changed member is not present in mailchimp
