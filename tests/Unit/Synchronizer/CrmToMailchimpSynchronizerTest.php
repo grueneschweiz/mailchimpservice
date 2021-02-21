@@ -93,7 +93,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $this->emailMember2 = Str::random() . '@mymail.com';
     }
     
-    protected function tearDown()
+    protected function tearDown(): void
     {
         parent::tearDown();
     
