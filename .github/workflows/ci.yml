@@ -33,7 +33,7 @@ jobs:
       - name: unit tests and coverage report
         env:
           MAILCHIMP_APIKEY: ${{ secrets.MAILCHIMP_APIKEY }}
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           docker-compose up -d
           sleep 30 # dirty hack, TODO: properly check if the db is up and ready to avoid race condition
