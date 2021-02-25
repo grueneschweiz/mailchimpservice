@@ -11,8 +11,7 @@ Bitte füge den betroffenen Kontakt nun noch im Webling hinzu. Achte darauf, das
 
 Für Fragen sind wir gerne unter {{ $mail->adminEmail }} erreichbar.
 Herzliche Grüsse,
-Deine Mailchimp-Webling Anbindung
-
+Deine Mailchimp-Webling Anbindung ({{ $mail->configName }})
 
 --- Deutsch oben ---
 
@@ -25,4 +24,4 @@ Veuillez ajouter maintenant le contact concerné à Webling. Assurez-vous que l'
 
 Si vous avez des questions, veuillez nous contacter sous {{ $mail->adminEmail }}}.
 Meilleures salutations,
-Votre connexion Mailchimp-Webling
+Votre connexion Mailchimp-Webling ({{ $mail->configName }})

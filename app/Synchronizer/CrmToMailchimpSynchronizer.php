@@ -13,6 +13,7 @@ use App\Exceptions\MemberDeleteException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Revision;
+use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -62,6 +63,14 @@ class CrmToMailchimpSynchronizer
      * @var string
      */
     private $lockFile;
+    
+    /**
+     * The id of the current revision entry in the local DB (not the crm's
+     * revision number)
+     *
+     * @var int
+     */
+    private $internalRevisionId;
     
     /**
      * Synchronizer constructor.
@@ -116,7 +125,7 @@ class CrmToMailchimpSynchronizer
     public function syncAllChanges(int $limit = 100, int $offset = 0, bool $all = false)
     {
         if (!$this->lock()) {
-            Log::info("There is already a synchronization for {$this->configName} running. Start of new sync job canceled.");
+            Log::info("({$this->configName}) There is already a synchronization for running. Start of new sync job canceled.");
             
             return;
         }
@@ -130,12 +139,12 @@ class CrmToMailchimpSynchronizer
         }
         
         if (0 === $offset) {
-            Log::debug("Starting to sync all changes from crm into mailchimp\nConfig: {$this->configName}");
+            Log::debug("({$this->configName}) Starting to sync all changes from crm into mailchimp\nConfig: {$this->configName}");
             
             if (-1 === $revId) {
-                Log::debug("Syncing all records regardless of changes.");
+                Log::debug("({$this->configName}) Syncing all records regardless of changes.");
             } else {
-                Log::debug("Id of last successfully synced revision: $revId");
+                Log::debug("({$this->configName}) Id of last successfully synced revision: $revId");
             }
             
             // get latest revision id and store it in the local database
@@ -149,22 +158,27 @@ class CrmToMailchimpSynchronizer
             
             // base case: everything worked well. update revision id
             if (empty($crmData)) {
-                Log::debug("Everything synced.");
+                Log::debug("({$this->configName}) Everything synced.");
                 $this->closeOpenRevision();
                 $this->unlock();
-                Log::debug("Sync for config {$this->configName} successful.");
+                Log::debug("({$this->configName}) Sync successful.");
                 
                 return;
             }
-            
+    
             // sync members to mailchimp
+            // don't use mailchimps batch operations, because they are async
             foreach ($crmData as $crmId => $record) {
-                // don't use mailchimps batch operations, because they are async
-                $this->syncSingleRetry($crmId, $record);
+                if ($this->alreadySynced($crmId)) {
+                    Log::debug("({$this->configName}) Record with id $crmId already synced. Skipping.");
+                } else {
+                    $this->syncSingleRetry($crmId, $record);
+                }
             }
             
             Log::debug(sprintf(
-                "Sync of records %d up to %d for config %s successful. Requesting next batch.",
+                "(%s) Sync of records %d up to %d for config %s successful. Requesting next batch.",
+                $this->configName,
                 $offset,
                 $offset + $limit,
                 $this->configName
@@ -205,9 +219,9 @@ class CrmToMailchimpSynchronizer
             $age = time() - $lastMod;
             if ($age > self::MAX_LOCK_TIME) {
                 rmdir($this->lockFile);
-                Log::notice('Max lock time exceeded. Lockfile deleted.');
+                Log::notice("({$this->configName}) Max lock time exceeded. Lockfile deleted.");
             } else {
-                Log::debug("Lockfile created ${age}s ago.");
+                Log::debug("({$this->configName}) Lockfile created ${age}s ago.");
                 
                 return false;
             }
@@ -243,20 +257,33 @@ class CrmToMailchimpSynchronizer
      * Add current crm revision id to the database, marked as none synced
      *
      * Make sure there is only one open revision per user. (if there were
-     * existing ones, a previous sync must have failed. lets resync all
-     * records then, so we have a self healing approach).
+     * existing ones, a previous sync must have failed. lets resume the it
+     * then, so we have a self-healing approach).
      *
      * @throws RequestException
      */
     private function openNewRevision()
     {
-        // delete old open revisions (from failed syncs)
-        $this->deleteOpenRevisions();
+        // try to resume
+        try {
+            $latestRev = $this->getOpenRevision();
         
+            Log::info(sprintf(
+                '(%s) Resuming revision %d for config %s',
+                $this->configName,
+                $latestRev->revision_id,
+                $this->configName
+            ));
+        
+            return;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // we don't have an open revision so there is nothing to resume
+        }
+    
         // get current revision id from crm
         $get = $this->crmClient->get('revision');
         $latestRevId = (int)json_decode((string)$get->getBody());
-        
+    
         // add current revision
         $latestRev = new Revision();
         $latestRev->config_name = $this->configName;
@@ -265,31 +292,11 @@ class CrmToMailchimpSynchronizer
         $latestRev->save();
         
         Log::debug(sprintf(
-            'Opening revision %d for config %s',
+            '(%s) Opening revision %d for config %s',
+            $this->configName,
             $latestRev->revision_id,
             $this->configName
         ));
-    }
-    
-    /**
-     * Delete all open revisions and log it
-     */
-    private function deleteOpenRevisions()
-    {
-        $openRevisions = Revision::where('config_name', $this->configName)
-            ->where('sync_successful', false);
-        
-        $count = $openRevisions->count();
-        
-        if ($count) {
-            $openRevisions->delete();
-            
-            Log::notice(sprintf(
-                '%d failed revisions for config %s were deleted.',
-                $count,
-                $this->configName
-            ));
-        }
     }
     
     /**
@@ -297,19 +304,31 @@ class CrmToMailchimpSynchronizer
      */
     private function closeOpenRevision()
     {
-        $revision = Revision::where('config_name', $this->configName)
+        $revision = $this->getOpenRevision();
+        $revision->sync_successful = true;
+        $revision->save();
+        $this->internalRevisionId = null;
+    
+        Log::debug(sprintf(
+            '(%s) Closing revision %d',
+            $this->configName,
+            $revision->revision_id
+        ));
+    }
+    
+    /**
+     * Get the revision we're currently working on
+     *
+     * @return Revision|\Illuminate\Database\Eloquent\Model
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     */
+    private function getOpenRevision()
+    {
+        return Revision::where('config_name', $this->configName)
             ->where('sync_successful', false)
             ->latest()
             ->firstOrFail(); // else die hard
-        
-        $revision->sync_successful = true;
-        $revision->save();
-        
-        Log::debug(sprintf(
-            'Closing revision %d for config %s',
-            $revision->revision_id,
-            $this->configName
-        ));
     }
     
     /**
@@ -334,6 +353,7 @@ class CrmToMailchimpSynchronizer
     {
         try {
             $this->syncSingle($crmId, $record);
+            $this->markSynced($crmId);
         } catch (MailchimpClientException $e) {
             switch ($attempt) {
                 case 0:
@@ -349,12 +369,12 @@ class CrmToMailchimpSynchronizer
                     return;
                 
                 default:
-                    Log::error("Failed to sync record $crmId to Mailchimp after tree attempts. Error: {$e->getMessage()}");
+                    Log::error("({$this->configName}) Failed to sync record $crmId to Mailchimp after tree attempts. Error: {$e->getMessage()}");
             }
         } catch (EmailComplianceException $e) {
-            Log::info("This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed.");
+            Log::info("({$this->configName}) This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed.");
         } catch (MemberDeleteException $e) {
-            Log::info($e->getMessage());
+            Log::info("({$this->configName}) " . $e->getMessage());
         }
     }
     
@@ -370,20 +390,20 @@ class CrmToMailchimpSynchronizer
      */
     private function syncSingle(int $crmId, $crmData)
     {
-        Log::debug("Start syncing record with id: $crmId");
+        Log::debug("({$this->configName}) Start syncing record with id: $crmId");
         
         $mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
         $mcEmail = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$crmId, $mcCrmIdFieldKey);
         
         // if the record was deleted in the crm
         if (null === $crmData) {
-            Log::debug("Record was deleted in crm.");
+            Log::debug("({$this->configName}) Record was deleted in crm.");
             
             if ($mcEmail) {
                 $this->mailchimpClient->deleteSubscriber($mcEmail);
-                Log::debug("Record deleted in mailchimp.");
+                Log::debug("({$this->configName}) Record deleted in mailchimp.");
             } else {
-                Log::debug("Record not present in mailchimp.");
+                Log::debug("({$this->configName}) Record not present in mailchimp.");
             }
             
             return;
@@ -391,7 +411,7 @@ class CrmToMailchimpSynchronizer
         
         // skip if record has no email address and isn't in mailchimp yet
         if (!$mcEmail && empty($crmData[$this->config->getCrmEmailKey()])) {
-            Log::debug("Record skipped (not in mailchimp and has no email address).");
+            Log::debug("({$this->configName}) Record skipped (not in mailchimp and has no email address).");
             
             return;
         }
@@ -401,19 +421,19 @@ class CrmToMailchimpSynchronizer
         $main = json_decode((string)$get->getBody(), true);
         $mainId = $main[Config::getCrmIdKey()];
         $email = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$mainId, $mcCrmIdFieldKey);
-        if ($crmId !== $mainId) {
-            Log::debug("Found main record. ID: $mainId");
+        if ($crmId != $mainId) { // type coercion wanted
+            Log::debug("({$this->configName}) Found main record. ID: $mainId");
         } else {
-            Log::debug("This record seems to be the main record.");
+            Log::debug("({$this->configName}) This record seems to be the main record.");
         }
         
         // remove all subscribers that unsubscribed via crm
         if (!$this->filter->filterSingle($main)) {
             if ($email) {
                 $this->mailchimpClient->deleteSubscriber($email);
-                Log::debug("Filter criteria not met: Record deleted in Mailchimp.");
+                Log::debug("({$this->configName}) Filter criteria not met: Record deleted in Mailchimp.");
             } else {
-                Log::debug("Filter criteria not met: Record not present in Mailchimp.");
+                Log::debug("({$this->configName}) Filter criteria not met: Record not present in Mailchimp.");
             }
             
             return;
@@ -425,7 +445,7 @@ class CrmToMailchimpSynchronizer
         // where the email address has changed in the crm
         if ($email && $email !== $main['email1']) {
             $updateEmail = true;
-            Log::debug("Email address has changed in crm.");
+            Log::debug("({$this->configName}) Email address has changed in crm.");
         } else {
             $updateEmail = false;
         }
@@ -437,9 +457,9 @@ class CrmToMailchimpSynchronizer
         try {
             $this->putSubscriber($mcRecord, $email, $updateEmail);
         } catch (AlreadyInListException $e) {
-            Log::warning("Mailchimp claims subscriber is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage());
+            Log::warning("({$this->configName}) Mailchimp claims subscriber is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage());
         } catch (InvalidEmailException $e) {
-            Log::info("INVALID EMAIL. Record skipped.");
+            Log::info("({$this->configName}) INVALID EMAIL. Record skipped.");
         }
     }
     
@@ -470,7 +490,7 @@ class CrmToMailchimpSynchronizer
             } else {
                 $this->mailchimpClient->putSubscriber($mcRecord);
             }
-            Log::debug("Record synchronized to mailchimp.");
+            Log::debug("({$this->configName}) Record synchronized to mailchimp.");
         } catch (AlreadyInListException $e) {
             // it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
             // if this is the case, we should find the subscriber in mailchimp and use this id
@@ -479,15 +499,15 @@ class CrmToMailchimpSynchronizer
                 $id = $matches['exact_matches']['members'][0]['id'];
         
                 $this->mailchimpClient->putSubscriber($mcRecord, null, $id);
-        
+    
                 $calculatedId = MailChimpClient::calculateSubscriberId($email);
-                Log::debug("Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow.");
+                Log::debug("({$this->configName}) Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow.");
             } else {
                 throw $e;
             }
         } catch (CleanedEmailException $e) {
             if (!$updateEmail) {
-                Log::info("This email-address was cleaned an no new email address was provided. Update aborted.");
+                Log::info("({$this->configName}) This email-address was cleaned an no new email address was provided. Update aborted.");
                 return;
             }
     
@@ -499,5 +519,47 @@ class CrmToMailchimpSynchronizer
             // then create a new one with the new email address
             $this->putSubscriber($mcRecord, "", false);
         }
+    }
+    
+    /**
+     * Create a new database entry that marks the given record as already synced
+     * for this revision so it can be skipped if the program runs twice.
+     *
+     * @param int $crmId
+     */
+    private function markSynced(int $crmId)
+    {
+        $sync = new Sync();
+        $sync->crm_id = $crmId;
+        $sync->internal_revision_id = $this->getInternalRevisionId();
+        $sync->save();
+    }
+    
+    /**
+     * The internal id of the current revision entry in the local db
+     *
+     * @return int
+     */
+    private function getInternalRevisionId()
+    {
+        if (!$this->internalRevisionId) {
+            $this->internalRevisionId = $this->getOpenRevision()->id;
+        }
+        
+        return $this->internalRevisionId;
+    }
+    
+    /**
+     * Checks if the given crm entry was already synced for this revision and
+     * this mailchimp instance.
+     *
+     * @param int $crmId
+     * @return bool
+     */
+    private function alreadySynced(int $crmId)
+    {
+        return (bool)Sync::where('crm_id', $crmId)
+            ->where('internal_revision_id', $this->getInternalRevisionId())
+            ->count();
     }
 }

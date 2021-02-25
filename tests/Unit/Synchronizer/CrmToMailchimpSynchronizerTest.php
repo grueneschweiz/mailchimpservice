@@ -3,10 +3,13 @@
 namespace App\Synchronizer;
 
 
+use App\Exceptions\MailchimpClientException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\OAuthClient;
+use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
+use ErrorException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -79,7 +82,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $lockFile = new \ReflectionProperty($this->sync, 'lockFile');
         $lockFile->setAccessible(true);
         $lockFile->setValue($this->sync, "{$lockRoot->getValue($this->sync)}/{$configName->getValue($this->sync)}.lock");
-        
+    
         // replace the mailchimp client with one with secure but real credentials
         $mailchimpClient = new \ReflectionProperty($this->sync, 'mailchimpClient');
         $mailchimpClient->setAccessible(true);
@@ -88,6 +91,17 @@ class CrmToMailchimpSynchronizerTest extends TestCase
     
         $this->emailMember1 = Str::random() . '@mymail.com';
         $this->emailMember2 = Str::random() . '@mymail.com';
+    }
+    
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+    
+        // cleanup after failed tests
+        try {
+            $this->sync->unlock();
+        } catch (ErrorException $e) {
+        }
     }
     
     public function testSyncAllChanges_add_all()
@@ -155,7 +169,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             'notesCountry' => 'Go to hell',
             'group' => 'BE',
             'recordCategory' => 'media',
-            'id' => (string)random_int(1000000, PHP_INT_MAX),
+            'id' => (string)random_int(1, 2147483647),
         ];
     }
     
@@ -425,5 +439,60 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         } catch (\Exception $e) {
         }
         $this->assertNull($subscriber1);
+    }
+    
+    public function testSyncAllChanges_update_twice_fromRevision()
+    {
+        $revisionId = 131;
+        
+        $member1 = $this->getMember($this->emailMember1);
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($revisionId)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member1 in synced database
+        $internalRevisionId = Revision::where('config_name', self::CONFIG_FILE_NAME)
+            ->latest()
+            ->firstOrFail()
+            ->id;
+        $this->assertDatabaseHas('syncs', [
+            'crm_id' => (int)$member1['id'],
+            'internal_revision_id' => $internalRevisionId
+        ]);
+    
+        // assert member1 is present in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
+        $this->assertEquals($member1['email1'], $subscriber1['email_address']);
+    
+        // reopen the internal revision (else we can't see, if it was skipped)
+        $internalRevision = Revision::find($internalRevisionId);
+        $internalRevision->sync_successful = false;
+        $internalRevision->save();
+    
+        // resync with different email. it should not get synced
+        $member1['email1'] = 'changed_' . $member1['email1'];
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+    
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert the changed member is not present in mailchimp
+        $this->expectException(MailchimpClientException::class);
+        $this->mcClientTesting->getSubscriber($member1['email1']);
+        
+        // cleanup
+        $this->mcClientTesting->deleteSubscriber($this->emailMember1);
     }
 }
