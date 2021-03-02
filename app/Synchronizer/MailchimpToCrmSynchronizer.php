@@ -187,7 +187,7 @@ class MailchimpToCrmSynchronizer
         $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
         $mailData->contactEmail = $mcData['email_address'];
         $mailData->adminEmail = env('ADMIN_EMAIL');
-        $mailData->configMail = $this->configName;
+        $mailData->configName = $this->configName;
         
         Mail::to($dataOwner['email'])
             ->send(new WrongSubscription($mailData));
