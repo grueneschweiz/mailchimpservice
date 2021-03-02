@@ -281,33 +281,6 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $this->mcClientTesting->deleteSubscriber($member1['email1']);
     }
     
-    public function testSyncAllChanges_invalid_email()
-    {
-        // the test
-        $member1 = $this->getMember('mail@example.com');
-        
-        $this->mockCrmResponse([
-            new Response(200, [], json_encode(123)),
-            new Response(200, [], json_encode([
-                $member1['id'] => $member1
-            ])),
-            new Response(200, [], json_encode($member1)),
-            new Response(200, [], json_encode($member1)),
-            new Response(200, [], json_encode($member1)),
-            new Response(200, [], json_encode([])),
-        ]);
-    
-        $this->sync->syncAllChanges(1, 0);
-    
-        // assert member1 not in mailchimp
-        $subscriber1 = null;
-        try {
-            $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
-        } catch (\Exception $e) {
-        }
-        $this->assertNull($subscriber1);
-    }
-    
     public function testSyncAllChanges_fake_email()
     {
         Mail::fake();
