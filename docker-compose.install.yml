@@ -2,9 +2,7 @@ version: '3'
 
 services:
   composer:
-    build:
-      context: .
-      dockerfile: .docker/composer/Dockerfile
+    image: composer
     volumes:
       - .:/app
     command: composer install --ignore-platform-reqs
