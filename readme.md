@@ -1,15 +1,14 @@
 # Mailchimp Service
 
-<!-- TODO: configure travis and coveralls: -->
-<!-- [![Build Status](https://travis-ci.com/grueneschweiz/mailchimpservice.svg?branch=master)](https://travis-ci.com/grueneschweiz/mailchimpservice) -->
-<!-- [![Coverage Status](https://coveralls.io/repos/github/grueneschweiz/mailchimpservice/badge.svg)](https://coveralls.io/github/grueneschweiz/mailchimpservice) -->
+[![build status](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/ci.yml/badge.svg)](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/grueneschweiz/mailchimpservice/badge.svg)](https://coveralls.io/github/grueneschweiz/mailchimpservice)
 
-**UNDER DEVELOPEMENT**
+This project marks the glue between the
+[weblingservice](https://github.com/grueneschweiz/weblingservice) and Mailchimp. It uses and wraps Mailchimp's
+[REST API](https://mailchimp.com/developer/marketing/api/root/).
 
-This project aims to give a layer for Mailchimp in order to access it via another app or with Wordpress. It uses and wraps the Mailchimps RESTful API. 
-
-It is based on the fabulous [Laravel](https://laravel.com/) framework
-to speed up the development. Check out the [docs](https://laravel.com/docs/5.6)
+It is based on the fabulous [Laravel](https://laravel.com/) framework to speed up the development. Check out
+the [docs](https://laravel.com/docs/)
 and start contributing 😍.
 
 ## Contributing ...
