@@ -169,7 +169,7 @@ class MailChimpClient
         $offset = 0;
         
         while (true) {
-            $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset", [], 30);
+            $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset&fields=members.email_address,members.merge_fields", [], 30);
             
             $this->validateResponseStatus('GET multiple subscribers', $get);
             $this->validateResponseContent('GET multiple subscribers', $get);
