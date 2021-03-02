@@ -6,6 +6,7 @@ namespace App\Synchronizer;
 use App\Exceptions\MailchimpClientException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
+use App\Mail\InvalidEmailNotification;
 use App\OAuthClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
@@ -15,6 +16,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -33,6 +35,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
      * @var CrmToMailchimpSynchronizer
      */
     private $sync;
+    
+    /**
+     * @var Config
+     */
+    private $config;
     
     private $emailMember1;
     private $emailMember2;
@@ -58,20 +65,20 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         // mock config
         config(['app.config_base_path' => 'tests']);
-        $config = new Config(self::CONFIG_FILE_NAME);
+        $this->config = new Config(self::CONFIG_FILE_NAME);
         $c = new \ReflectionProperty($this->sync, 'config');
         $c->setAccessible(true);
-        $c->setValue($this->sync, $config);
+        $c->setValue($this->sync, $this->config);
         
         // add filter
         $filter = new \ReflectionProperty($this->sync, 'filter');
         $filter->setAccessible(true);
-        $filter->setValue($this->sync, new Filter($config->getFieldMaps(), $config->getSyncAll()));
+        $filter->setValue($this->sync, new Filter($this->config->getFieldMaps(), $this->config->getSyncAll()));
         
         // add mapper
         $mapper = new \ReflectionProperty($this->sync, 'mapper');
         $mapper->setAccessible(true);
-        $mapper->setValue($this->sync, new Mapper($config->getFieldMaps()));
+        $mapper->setValue($this->sync, new Mapper($this->config->getFieldMaps()));
         
         // add lock path
         $lockRoot = new \ReflectionProperty($this->sync, 'lockRoot');
@@ -86,7 +93,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         // replace the mailchimp client with one with secure but real credentials
         $mailchimpClient = new \ReflectionProperty($this->sync, 'mailchimpClient');
         $mailchimpClient->setAccessible(true);
-        $mailchimpClient->setValue($this->sync, new MailChimpClient(env('MAILCHIMP_APIKEY'), $config->getMailchimpListId()));
+        $mailchimpClient->setValue($this->sync, new MailChimpClient(env('MAILCHIMP_APIKEY'), $this->config->getMailchimpListId()));
         $this->mcClientTesting = $mailchimpClient->getValue($this->sync);
     
         $this->emailMember1 = Str::random() . '@mymail.com';
@@ -289,6 +296,33 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode($member1)),
             new Response(200, [], json_encode([])),
         ]);
+    
+        $this->sync->syncAllChanges(1, 0);
+    
+        // assert member1 not in mailchimp
+        $subscriber1 = null;
+        try {
+            $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
+        } catch (\Exception $e) {
+        }
+        $this->assertNull($subscriber1);
+    }
+    
+    public function testSyncAllChanges_fake_email()
+    {
+        Mail::fake();
+        
+        // the test
+        $member1 = $this->getMember('mail@gmail.con');
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([])),
+        ]);
         
         $this->sync->syncAllChanges(1, 0);
         
@@ -298,7 +332,17 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
         } catch (\Exception $e) {
         }
-        $this->assertNull($subscriber1);
+        self::assertNull($subscriber1);
+        
+        Mail::assertSent(InvalidEmailNotification::class, function ($mail) use ($member1) {
+            $this->assertEquals($member1['firstName'], $mail->mail->contactFirstName);
+            $this->assertEquals($member1['lastName'], $mail->mail->contactLastName);
+            $this->assertEquals($member1['email1'], $mail->mail->contactEmail);
+            $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
+            $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
+            
+            return true;
+        });
     }
     
     public function testSyncAllChanges_tag_change()

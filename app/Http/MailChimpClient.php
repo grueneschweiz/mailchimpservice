@@ -5,6 +5,7 @@ namespace App\Http;
 use App\Exceptions\AlreadyInListException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
+use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
@@ -206,6 +207,7 @@ class MailChimpClient
      * @throws EmailComplianceException
      * @throws AlreadyInListException
      * @throws CleanedEmailException
+     * @throws FakeEmailException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -242,6 +244,9 @@ class MailChimpClient
             }
             if (isset($put['detail']) && strpos($put['detail'], 'is already a list member')) {
                 throw new AlreadyInListException($put['detail']);
+            }
+            if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
+                throw new FakeEmailException($put['detail']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);

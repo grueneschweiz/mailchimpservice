@@ -7,17 +7,20 @@ namespace App\Synchronizer;
 use App\Exceptions\AlreadyInListException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
+use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
+use App\Mail\InvalidEmailNotification;
 use App\Revision;
 use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CrmToMailchimpSynchronizer
 {
@@ -267,14 +270,14 @@ class CrmToMailchimpSynchronizer
         // try to resume
         try {
             $latestRev = $this->getOpenRevision();
-        
+    
             Log::info(sprintf(
                 '(%s) Resuming revision %d for config %s',
                 $this->configName,
                 $latestRev->revision_id,
                 $this->configName
             ));
-        
+    
             return;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // we don't have an open revision so there is nothing to resume
@@ -459,8 +462,33 @@ class CrmToMailchimpSynchronizer
         } catch (AlreadyInListException $e) {
             Log::warning("({$this->configName}) Mailchimp claims subscriber is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: " . $e->getMessage());
         } catch (InvalidEmailException $e) {
-            Log::info("({$this->configName}) INVALID EMAIL. Record skipped.");
+            Log::info("({$this->configName}) INVALID EMAIL ({$mcRecord['email_address']}). Record skipped.");
+        } catch (FakeEmailException $e) {
+            $this->notifyAdminInvalidEmail($mcRecord);
+            Log::info("({$this->configName}) FAKE or INVALID EMAIL ({$mcRecord['email_address']}). Config admin notified.");
         }
+    }
+    
+    /**
+     * Inform data owner that he should only add contact in the crm not in mailchimp
+     *
+     * @param array $dataOwner
+     * @param array $mcData
+     */
+    private function notifyAdminInvalidEmail(array $mcData)
+    {
+        $dataOwner = $this->config->getDataOwner();
+        
+        $mailData = new \stdClass();
+        $mailData->dataOwnerName = $dataOwner['name'];
+        $mailData->contactFirstName = $mcData['merge_fields']['FNAME']; // todo: check if we cant get the field keys dynamically
+        $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
+        $mailData->contactEmail = $mcData['email_address'];
+        $mailData->adminEmail = env('ADMIN_EMAIL');
+        $mailData->configName = $this->configName;
+        
+        Mail::to($dataOwner['email'])
+            ->send(new InvalidEmailNotification($mailData));
     }
     
     /**
@@ -481,6 +509,8 @@ class CrmToMailchimpSynchronizer
      *   Mailchimp.
      * @throws MailchimpClientException On a connection error.
      * @throws MemberDeleteException If the deletion of a cleaned record failed.
+     * @throws FakeEmailException If mailchimp recognizes a well known error
+     *                            (like @gmail.con)
      */
     private function putSubscriber(array $mcRecord, string $email, bool $updateEmail)
     {
@@ -497,7 +527,7 @@ class CrmToMailchimpSynchronizer
             $matches = $this->mailchimpClient->findSubscriber($email);
             if (1 === $matches['exact_matches']['total_items']) {
                 $id = $matches['exact_matches']['members'][0]['id'];
-        
+    
                 $this->mailchimpClient->putSubscriber($mcRecord, null, $id);
     
                 $calculatedId = MailChimpClient::calculateSubscriberId($email);
@@ -507,7 +537,7 @@ class CrmToMailchimpSynchronizer
             }
         } catch (CleanedEmailException $e) {
             if (!$updateEmail) {
-                Log::info("({$this->configName}) This email-address was cleaned an no new email address was provided. Update aborted.");
+                Log::info("({$this->configName}) This email-address was cleaned and no new email address was provided. Update aborted.");
                 return;
             }
     
