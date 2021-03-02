@@ -32,7 +32,7 @@ services:
     ports:
       - '4307:3306'
     volumes:
-      - .docker/mysql/data:/var/lib/mysql
+      - db:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: mailchimp
@@ -57,3 +57,6 @@ services:
     ports:
       - '9020:9025'
     container_name: wsmailhog_mailchimp
+
+volumes:
+  db:
