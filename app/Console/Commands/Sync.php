@@ -45,7 +45,7 @@ class Sync extends Command
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return integer
      *
      * @throws \Exception
      */

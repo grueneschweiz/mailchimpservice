@@ -32,7 +32,7 @@ class DeleteEndpoint extends EndpointCommand
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return integer
      */
     public function handle()
     {
