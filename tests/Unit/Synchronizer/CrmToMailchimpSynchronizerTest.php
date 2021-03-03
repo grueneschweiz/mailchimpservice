@@ -140,7 +140,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         // assert member1 in mailchimp
         $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
-        $this->assertEquals($member1['email1'], $subscriber1['email_address']);
+        $this->assertEquals(strtolower($member1['email1']), $subscriber1['email_address']);
         
         // assert member2 not in mailchimp
         $subscriber2 = null;
@@ -286,7 +286,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         Mail::fake();
         
         // the test
-        $member1 = $this->getMember(Str::random() + '@gmail.con');
+        $member1 = $this->getMember(Str::random() . '@gmail.con');
         
         $this->mockCrmResponse([
             new Response(200, [], json_encode(123)),
@@ -310,7 +310,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         Mail::assertSent(InvalidEmailNotification::class, function ($mail) use ($member1) {
             $this->assertEquals($member1['firstName'], $mail->mail->contactFirstName);
             $this->assertEquals($member1['lastName'], $mail->mail->contactLastName);
-            $this->assertEquals($member1['email1'], $mail->mail->contactEmail);
+            $this->assertEquals(strtolower($member1['email1']), $mail->mail->contactEmail);
             $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
             $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
             
