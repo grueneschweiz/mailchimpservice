@@ -286,7 +286,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         Mail::fake();
         
         // the test
-        $member1 = $this->getMember('mail@gmail.con');
+        $member1 = $this->getMember(Str::random() + '@gmail.con');
         
         $this->mockCrmResponse([
             new Response(200, [], json_encode(123)),
