@@ -394,14 +394,17 @@ class CrmToMailchimpSynchronizer
     private function syncSingle(int $crmId, $crmData)
     {
         Log::debug("({$this->configName}) Start syncing record with id: $crmId");
-        
+    
+        $emailKey = $this->config->getCrmEmailKey();
+        $crmData[$emailKey] = $this->normalizeEmail($crmData[$emailKey]);
+    
         $mcCrmIdFieldKey = $this->config->getMailchimpKeyOfCrmId();
         $mcEmail = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$crmId, $mcCrmIdFieldKey);
-        
+    
         // if the record was deleted in the crm
         if (null === $crmData) {
             Log::debug("({$this->configName}) Record was deleted in crm.");
-            
+        
             if ($mcEmail) {
                 $this->mailchimpClient->deleteSubscriber($mcEmail);
                 Log::debug("({$this->configName}) Record deleted in mailchimp.");
@@ -413,15 +416,16 @@ class CrmToMailchimpSynchronizer
         }
         
         // skip if record has no email address and isn't in mailchimp yet
-        if (!$mcEmail && empty($crmData[$this->config->getCrmEmailKey()])) {
+        if (!$mcEmail && empty($crmData[$emailKey])) {
             Log::debug("({$this->configName}) Record skipped (not in mailchimp and has no email address).");
-            
+        
             return;
         }
         
         // get the master record
         $get = $this->crmClient->get("member/$crmId/main");
         $main = json_decode((string)$get->getBody(), true);
+        $main[$emailKey] = $this->normalizeEmail($main[$emailKey]);
         $mainId = $main[Config::getCrmIdKey()];
         $email = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$mainId, $mcCrmIdFieldKey);
         if ($crmId != $mainId) { // type coercion wanted
@@ -591,5 +595,16 @@ class CrmToMailchimpSynchronizer
         return (bool)Sync::where('crm_id', $crmId)
             ->where('internal_revision_id', $this->getInternalRevisionId())
             ->count();
+    }
+    
+    /**
+     * Trims and converts the given email to a lowercase string.
+     *
+     * @param string|null|false $email
+     * @return string
+     */
+    private function normalizeEmail(string|null|false $email): string
+    {
+        return strtolower(trim((string)$email));
     }
 }
