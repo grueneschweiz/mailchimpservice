@@ -233,7 +233,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         // assert member2 in mailchimp
         $subscriber2 = $this->mcClientTesting->getSubscriber($member2['email1']);
-        $this->assertEquals($member2['email1'], $subscriber2['email_address']);
+        $this->assertEquals(strtolower($member2['email1']), $subscriber2['email_address']);
     }
     
     public function testSyncAllChanges_email_change()
@@ -487,7 +487,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
     
         // assert member1 is present in mailchimp
         $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
-        $this->assertEquals($member1['email1'], $subscriber1['email_address']);
+        $this->assertEquals(strtolower($member1['email1']), $subscriber1['email_address']);
     
         // reopen the internal revision (else we can't see, if it was skipped)
         $internalRevision = Revision::find($internalRevisionId);
