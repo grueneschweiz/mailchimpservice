@@ -372,7 +372,7 @@ class CrmToMailchimpSynchronizer
                     return;
                 
                 default:
-                    Log::error("({$this->configName}) Failed to sync record $crmId to Mailchimp after tree attempts. Error: {$e->getMessage()}");
+                    Log::warning("({$this->configName}) Failed to sync record $crmId ({$record[$this->config->getCrmEmailKey()]}) to Mailchimp after tree attempts. Error: {$e->getMessage()}");
             }
         } catch (EmailComplianceException $e) {
             Log::info("({$this->configName}) This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed.");
