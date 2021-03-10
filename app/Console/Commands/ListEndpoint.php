@@ -34,7 +34,7 @@ class ListEndpoint extends Command
     /**
      * Print a table with all mailchimp endpoints
      *
-     * @return mixed
+     * @return integer
      */
     public function handle()
     {

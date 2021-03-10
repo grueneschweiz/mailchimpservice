@@ -9,31 +9,27 @@
   "license": "MIT",
   "type": "project",
   "require": {
-    "php": "^7.2.0",
+    "php": "^8.0",
     "ext-json": "*",
     "drewm/mailchimp-api": "^2.5",
     "fideloper/proxy": "^4.2",
-    "guzzlehttp/guzzle": "^6.3",
-    "laravel/framework": "5.8.*",
+    "guzzlehttp/guzzle": "^7.0.1",
+    "laravel/framework": "^8.0",
     "laravel/slack-notification-channel": "^2.0",
-    "laravel/tinker": "^1.0",
+    "laravel/tinker": "^2.0",
     "symfony/yaml": "^4.3"
   },
   "require-dev": {
     "filp/whoops": "^2.5",
-    "fzaninotto/faker": "^1.8",
     "mockery/mockery": "^1.2",
-    "nunomaduro/collision": "^3.0",
-    "phpunit/phpunit": "^8.3",
-    "ext-json": "*"
+    "nunomaduro/collision": "^5.0",
+    "phpunit/phpunit": "^9.0"
   },
   "autoload": {
-    "classmap": [
-      "database/seeds",
-      "database/factories"
-    ],
     "psr-4": {
-      "App\\": "app/"
+      "App\\": "app/",
+      "Database\\Factories\\": "database/factories/",
+      "Database\\Seeders\\": "database/seeders/"
     }
   },
   "autoload-dev": {

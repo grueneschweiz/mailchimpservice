@@ -5,6 +5,7 @@ namespace App\Http;
 use App\Exceptions\AlreadyInListException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
+use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
@@ -169,7 +170,7 @@ class MailChimpClient
         $offset = 0;
         
         while (true) {
-            $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset", [], 30);
+            $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset&fields=members.email_address,members.merge_fields", [], 30);
             
             $this->validateResponseStatus('GET multiple subscribers', $get);
             $this->validateResponseContent('GET multiple subscribers', $get);
@@ -206,6 +207,7 @@ class MailChimpClient
      * @throws EmailComplianceException
      * @throws AlreadyInListException
      * @throws CleanedEmailException
+     * @throws FakeEmailException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -242,6 +244,9 @@ class MailChimpClient
             }
             if (isset($put['detail']) && strpos($put['detail'], 'is already a list member')) {
                 throw new AlreadyInListException($put['detail']);
+            }
+            if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
+                throw new FakeEmailException($put['detail']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);

@@ -202,8 +202,8 @@ class CrmClientTest extends TestCase
     {
         $method = new \ReflectionMethod(CrmClient::class, 'forceSSL');
         $method->setAccessible(true);
-        
-        $this->assertRegExp('/^https:\/\//', $method->invoke($this->client, 'http://example.com'));
-        $this->assertRegExp('/^https:\/\//', $method->invoke($this->client, '//example.com'));
+    
+        $this->assertMatchesRegularExpression('/^https:\/\//', $method->invoke($this->client, 'http://example.com'));
+        $this->assertMatchesRegularExpression('/^https:\/\//', $method->invoke($this->client, '//example.com'));
     }
 }

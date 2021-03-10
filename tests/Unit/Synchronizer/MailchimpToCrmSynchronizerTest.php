@@ -129,6 +129,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
             $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
             $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
+            $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
             
             return true;
         });

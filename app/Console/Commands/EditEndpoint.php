@@ -34,7 +34,7 @@ class EditEndpoint extends EndpointCommand
     /**
      * Change config file and/or secret according to the given options.
      *
-     * @return mixed
+     * @return integer
      */
     public function handle()
     {
