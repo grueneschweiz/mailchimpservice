@@ -98,7 +98,7 @@ class MailchimpToCrmSynchronizer
                 $mcData = $this->mcClient->getSubscriber($email);
     
                 // if there is no crm id
-                if (empty($mcData['data']['merges'][$this->config->getMailchimpKeyOfCrmId()])) {
+                if (empty($mcData['data']['merge_fields'][$this->config->getMailchimpKeyOfCrmId()])) {
                     // send mail to dataOwner, that he should
                     // add the subscriber to webling not mailchimp
                     $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
@@ -110,7 +110,7 @@ class MailchimpToCrmSynchronizer
             case self::MC_UNSUBSCRIBE:
                 // get contact from crm
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
-                $crmId = $mcData['data']['merges'][$this->config->getMailchimpKeyOfCrmId()];
+                $crmId = $mcData['data']['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
                 $get = $this->crmClient->get('member/' . $crmId);
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);

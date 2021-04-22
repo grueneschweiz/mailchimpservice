@@ -111,7 +111,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             'type' => 'subscribe',
             'data' => [
                 'email' => $email,
-                'merges' => [
+                'merge_fields' => [
                     'EMAIL' => $email,
                     'FNAME' => 'First Name',
                     'LANME' => 'Last Name',
@@ -155,7 +155,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             'type' => 'unsubscribe',
             'data' => [
                 'email' => $email,
-                'merges' => [
+                'merge_fields' => [
                     'EMAIL' => $email,
                     'FNAME' => 'First Name',
                     'LANME' => 'Last Name',
