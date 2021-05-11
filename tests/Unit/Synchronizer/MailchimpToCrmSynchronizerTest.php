@@ -84,7 +84,6 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         // config
         Mail::fake();
         $email = Str::random() . '@mymail.com';
-        $crmId = 123456;
         
         // precondition
         $subscriber = [
@@ -93,7 +92,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 'FNAME' => 'First Name',
                 'LNAME' => 'Last Name',
                 'GENDER' => 'n',
-                'WEBLINGID' => (string)$crmId,
+                'WEBLINGID' => '',
             ],
             'interests' => [
                 '55f795def4' => true,
@@ -116,7 +115,66 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                     'FNAME' => 'First Name',
                     'LANME' => 'Last Name',
                     'GENDER' => 'n',
-                    'WEBLINGID' => (string)$crmId,
+                    'WEBLINGID' => '',
+                ],
+            ],
+        ];
+        
+        $this->sync->syncSingle($webhookData);
+        
+        Mail::assertSent(WrongSubscription::class, function ($mail) use ($subscriber) {
+            $this->assertEquals($subscriber['merge_fields']['FNAME'], $mail->mail->contactFirstName);
+            $this->assertEquals($subscriber['merge_fields']['LNAME'], $mail->mail->contactLastName);
+            $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
+            $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
+            $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
+            $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
+    
+            return true;
+        });
+    
+        // cleanup
+        $this->mcClientTesting->deleteSubscriber($email);
+    }
+    
+    
+    public function testSyncSingle__subscribe__merges()
+    {
+        // config
+        Mail::fake();
+        $email = Str::random() . '@mymail.com';
+        
+        // precondition
+        $subscriber = [
+            'email_address' => $email,
+            'merge_fields' => [
+                'FNAME' => 'First Name',
+                'LNAME' => 'Last Name',
+                'GENDER' => 'n',
+                'WEBLINGID' => '',
+            ],
+            'interests' => [
+                '55f795def4' => true,
+                '1851be732e' => false,
+                '294df36247' => true,
+                '633e3c8dd7' => false,
+            ],
+            'tags' => [],
+        ];
+        
+        $this->mcClientTesting->putSubscriber($subscriber);
+        
+        // test
+        $webhookData = [
+            'type' => 'subscribe',
+            'data' => [
+                'email' => $email,
+                'merges' => [
+                    'EMAIL' => $email,
+                    'FNAME' => 'First Name',
+                    'LANME' => 'Last Name',
+                    'GENDER' => 'n',
+                    'WEBLINGID' => '',
                 ],
             ],
         ];
