@@ -96,21 +96,24 @@ class MailchimpToCrmSynchronizer
         switch ($callType) {
             case self::MC_SUBSCRIBE:
                 $mcData = $this->mcClient->getSubscriber($email);
+                $mergeFields = $this->extractMergeFields($mcData);
     
                 // if there is no crm id
-                if (empty($mcData['data']['merge_fields'][$this->config->getMailchimpKeyOfCrmId()])) {
+                if (empty($mergeFields[$this->config->getMailchimpKeyOfCrmId()])) {
                     // send mail to dataOwner, that he should
                     // add the subscriber to webling not mailchimp
                     $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
                     Log::debug('MC_SUBSCRIBE: Inform data owner.');
                 }
-                
+    
                 return;
-            
+    
             case self::MC_UNSUBSCRIBE:
+                $mergeFields = $this->extractMergeFields($mcData['data']);
+        
                 // get contact from crm
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
-                $crmId = $mcData['data']['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
+                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $get = $this->crmClient->get('member/' . $crmId);
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);
@@ -122,11 +125,12 @@ class MailchimpToCrmSynchronizer
                 // add note 'email set to invalid because it bounced in mailchimp'
                 if ('hard' !== $mcData['data']['reason']) {
                     Log::debug('MC_CLEANED_EMAIL: Bounce not hard. No action taken.');
-                    
+        
                     return;
                 }
                 $mcData = $this->mcClient->getSubscriber($email);
-                $crmId = $mcData['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
+                $mergeFields = $this->extractMergeFields($mcData);
+                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $get = $this->crmClient->get('member/' . $crmId);
                 $crmRespData = json_decode((string)$get->getBody(), true);
                 $crmData['emailStatus'] = 'invalid';
@@ -138,7 +142,8 @@ class MailchimpToCrmSynchronizer
                 // get subscriber from mailchimp (so we have the interessts (groups) in a usable format)
                 // update email1, subscriptions
                 $mcData = $this->mcClient->getSubscriber($email);
-                $crmId = $mcData['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
+                $mergeFields = $this->extractMergeFields($mcData);
+                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $crmData = $mapper->mailchimpToCrm($mcData);
                 Log::debug("MC_PROFILE_UPDATE: Update subscriptions in crm (crm id: $crmId).");
                 break;
@@ -146,7 +151,8 @@ class MailchimpToCrmSynchronizer
             case self::MC_EMAIL_UPDATE:
                 // update email1
                 $mcData = $this->mcClient->getSubscriber($email);
-                $crmId = $mcData['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
+                $mergeFields = $this->extractMergeFields($mcData);
+                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $crmData = $this->updateEmail($mcData);
                 Log::debug("MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId).");
                 break;
@@ -164,13 +170,18 @@ class MailchimpToCrmSynchronizer
         foreach ($crmData as $key => $value) {
             $putData[$key] = ['value' => $value, 'mode' => 'replace'];
         }
-        
+    
         $this->crmClient->put('member/' . $crmId, $putData);
-        
+    
         Log::debug(sprintf(
             "Sync successful (mailchimp record id: %d)",
             $mailchimpId
         ));
+    }
+    
+    private function extractMergeFields(array $mcData)
+    {
+        return $mcData['merges'] ?? $mcData['merge_fields'];
     }
     
     /**
@@ -181,10 +192,12 @@ class MailchimpToCrmSynchronizer
      */
     private function sendMailSubscribeOnlyInWebling(array $dataOwner, array $mcData)
     {
+        $mergeFields = $this->extractMergeFields($mcData);
+        
         $mailData = new \stdClass();
         $mailData->dataOwnerName = $dataOwner['name'];
-        $mailData->contactFirstName = $mcData['merge_fields']['FNAME']; // todo: check if we cant get the field keys dynamically
-        $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
+        $mailData->contactFirstName = $mergeFields['FNAME']; // todo: check if we cant get the field keys dynamically
+        $mailData->contactLastName = $mergeFields['LNAME']; // todo: dito
         $mailData->contactEmail = $mcData['email_address'];
         $mailData->adminEmail = env('ADMIN_EMAIL');
         $mailData->configName = $this->configName;
