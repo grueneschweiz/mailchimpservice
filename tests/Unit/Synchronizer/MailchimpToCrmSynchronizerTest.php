@@ -310,7 +310,6 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         
         // precondition
         $this->mockCrmResponse([
-            new Response(200, [], json_encode($member)),
             new Response(201)
         ]);
         
@@ -326,13 +325,14 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $this->sync->syncSingle($webhookData);
         
         /** @var Request $put */
-        $put = $this->crmRequestHistory[1]['request'];
+        $put = $this->crmRequestHistory[0]['request'];
         $data = json_decode((string)$put->getBody(), true);
         
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
         $this->assertEquals('invalid', $data['emailStatus']['value']);
+        $this->assertEquals('replace', $data['emailStatus']['mode']);
         $this->assertStringContainsString('Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry']['value']);
-        $this->assertStringContainsString($member['notesCountry'], $data['notesCountry']['value']);
+        $this->assertEquals('append', $data['notesCountry']['mode']);
         
         // cleanup
         $this->mcClientTesting->deleteSubscriber($email);

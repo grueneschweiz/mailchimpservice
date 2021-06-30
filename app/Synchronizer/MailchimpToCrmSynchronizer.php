@@ -125,16 +125,15 @@ class MailchimpToCrmSynchronizer
                 // add note 'email set to invalid because it bounced in mailchimp'
                 if ('hard' !== $mcData['data']['reason']) {
                     Log::debug('MC_CLEANED_EMAIL: Bounce not hard. No action taken.');
-        
+    
                     return;
                 }
                 $mcData = $this->mcClient->getSubscriber($email);
                 $mergeFields = $this->extractMergeFields($mcData);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
-                $get = $this->crmClient->get('member/' . $crmId);
-                $crmRespData = json_decode((string)$get->getBody(), true);
-                $crmData['emailStatus'] = 'invalid';
-                $crmData['notesCountry'] = $crmRespData['notesCountry'] . sprintf("\n%s: Mailchimp reported the email as invalid. Email status changed.", date('Y-m-d H:i'));
+                $note = sprintf("%s: Mailchimp reported the email as invalid. Email status changed.", date('Y-m-d H:i'));
+                $crmData['emailStatus'] = new CrmValue('emailStatus', 'invalid', CrmValue::MODE_REPLACE);
+                $crmData['notesCountry'] = new CrmValue('notesCountry', $note, CrmValue::MODE_APPEND);
                 Log::debug("MC_CLEANED_EMAIL: Mark email invalid in crm (crm id: $crmId).");
                 break;
             
@@ -153,10 +152,10 @@ class MailchimpToCrmSynchronizer
                 $mcData = $this->mcClient->getSubscriber($email);
                 $mergeFields = $this->extractMergeFields($mcData);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
-                $crmData = $this->updateEmail($mcData);
+                $crmData = [$this->updateEmail($mcData)];
                 Log::debug("MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId).");
                 break;
-            
+    
             default:
                 // log: this type is not supported
                 Log::notice(sprintf(
@@ -165,10 +164,10 @@ class MailchimpToCrmSynchronizer
                     $mcData['type']
                 ));
         }
-        
+    
         $putData = [];
-        foreach ($crmData as $key => $value) {
-            $putData[$key] = ['value' => $value, 'mode' => 'replace'];
+        foreach ($crmData as $crmValue) {
+            $putData[$crmValue->getKey()] = ['value' => $crmValue->getValue(), 'mode' => $crmValue->getMode()];
         }
     
         $this->crmClient->put('member/' . $crmId, $putData);
@@ -234,18 +233,18 @@ class MailchimpToCrmSynchronizer
      *
      * @param array $mcData
      *
-     * @return array in crmData format with email only
+     * @return CrmValue of the email field
      *
      * @throws \App\Exceptions\ConfigException
      * @throws \App\Exceptions\ParseMailchimpDataException
      */
-    private function updateEmail(array $mcData): array
+    private function updateEmail(array $mcData): CrmValue
     {
         foreach ($this->config->getFieldMaps() as $map) {
             if ($map->isEmail()) {
                 $map->addMailchimpData($mcData);
                 
-                return $map->getCrmDataArray();
+                return $map->getCrmData();
             }
         }
         

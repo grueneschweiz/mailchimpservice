@@ -5,14 +5,16 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 
 use Tests\TestCase;
 
-class FieldMapGroupTest extends TestCase
+class FieldMapGroup__Bool__Test extends TestCase
 {
-    public function testGetCrmDataArray__add()
+    public function testGetCrmData__add()
     {
         $map = new FieldMapGroup($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
         
-        $this->assertEquals(['newsletterCountryD' => 'yes'], $map->getCrmDataArray());
+        self::assertEquals('newsletterCountryD', $map->getCrmData()->getKey());
+        self::assertEquals('yes', $map->getCrmData()->getValue());
+        self::assertEquals('replace', $map->getCrmData()->getMode());
     }
     
     private function getConfig()
@@ -36,7 +38,7 @@ class FieldMapGroupTest extends TestCase
         ];
     }
     
-    public function testGetCrmDataArray__remove()
+    public function testGetCrmData__remove()
     {
         $map = new FieldMapGroup($this->getConfig());
         $data = [
@@ -47,7 +49,9 @@ class FieldMapGroupTest extends TestCase
         
         $map->addMailchimpData($data);
         
-        $this->assertEquals(['newsletterCountryD' => 'no'], $map->getCrmDataArray());
+        self::assertEquals('newsletterCountryD', $map->getCrmData()->getKey());
+        self::assertEquals('no', $map->getCrmData()->getValue());
+        self::assertEquals('replace', $map->getCrmData()->getMode());
     }
     
     public function testGetMailchimpDataArray__add()

@@ -28,7 +28,7 @@ class FieldMapAutotagTest extends TestCase
         $map = new FieldMapAutotag($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
         
-        $this->assertEmpty($map->getCrmDataArray());
+        $this->assertEmpty($map->getCrmData());
     }
     
     private function getMailchimpData()

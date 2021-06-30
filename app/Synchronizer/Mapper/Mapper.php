@@ -36,7 +36,8 @@ class Mapper
         foreach ($this->fieldMaps as $map) {
             if ($map->canSyncToCrm()) {
                 $map->addMailchimpData($mailchimpData);
-                $data = array_merge($data, $map->getCrmDataArray());
+                $crmData = $map->getCrmData();
+                $data[$crmData->getKey()] = $crmData;
             }
         }
         

@@ -7,6 +7,7 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 use App\Exceptions\ConfigException;
 use App\Exceptions\ParseCrmDataException;
 use App\Exceptions\ParseMailchimpDataException;
+use App\Synchronizer\CrmValue;
 
 /**
  * Mapper for tag fields
@@ -66,11 +67,11 @@ class FieldMapAutotag extends FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return array
+     * @return CrmValue
      */
-    function getCrmDataArray()
+    function getCrmData()
     {
-        return []; // don't do anything, we don't allow syncing from mailchimp to crm
+        return null; // don't do anything, we don't allow syncing from mailchimp to crm
     }
     
     /**

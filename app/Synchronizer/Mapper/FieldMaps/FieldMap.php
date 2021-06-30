@@ -7,6 +7,7 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 use App\Exceptions\ConfigException;
 use App\Exceptions\ParseCrmDataException;
 use App\Exceptions\ParseMailchimpDataException;
+use App\Synchronizer\CrmValue;
 
 abstract class FieldMap
 {
@@ -66,9 +67,9 @@ abstract class FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return array
+     * @return CrmValue
      */
-    abstract function getCrmDataArray();
+    abstract function getCrmData();
     
     /**
      * Get key value pair ready for storing in mailchimp
