@@ -58,6 +58,12 @@ fields:
     trueCondition: yes
     falseCondition: no
     sync: both
+  - crmKey: notesCountry
+    mailchimpCategoryId: bba5d2d564
+    type: group
+    trueContainsString: PolitletterDE
+    falseContainsString: PolitletterUnsubscribed
+    sync: both
   - crmKey: memberStatusCountry
     mailchimpTagName: member
     type: tag
