@@ -75,14 +75,17 @@ class FieldMapGroup__Contains__Test extends TestCase
         
         $map->addCrmData(['notesCountry' => 'PolitletterDE PolitletterUnsubscribed']);
         $this->assertEquals(['bba5d2d564' => false], $map->getMailchimpDataArray());
-        
+    
         $map->addCrmData(['notesCountry' => 'PolitletterUnsubscribed PolitletterDE']);
         $this->assertEquals(['bba5d2d564' => false], $map->getMailchimpDataArray());
-        
+    
         $map->addCrmData(['notesCountry' => 'PolitletterUnsubscribed']);
         $this->assertEquals(['bba5d2d564' => false], $map->getMailchimpDataArray());
-        
+    
         $map->addCrmData(['notesCountry' => '']);
+        $this->assertEquals(['bba5d2d564' => false], $map->getMailchimpDataArray());
+    
+        $map->addCrmData(['notesCountry' => null]);
         $this->assertEquals(['bba5d2d564' => false], $map->getMailchimpDataArray());
     }
     

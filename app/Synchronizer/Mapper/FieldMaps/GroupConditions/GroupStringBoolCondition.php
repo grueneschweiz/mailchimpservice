@@ -18,7 +18,7 @@ class GroupStringBoolCondition implements GroupConditionInterface
         $this->falseCondition = $falseCondition;
     }
     
-    public function setFromCrmData(string $crmStringData)
+    public function setFromCrmData(?string $crmStringData)
     {
         $this->value = $crmStringData === $this->trueCondition;
     }

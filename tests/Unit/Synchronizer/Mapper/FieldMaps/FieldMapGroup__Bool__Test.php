@@ -72,11 +72,14 @@ class FieldMapGroup__Bool__Test extends TestCase
     public function testGetMailchimpDataArray__remove()
     {
         $map = new FieldMapGroup($this->getConfig());
-        
+    
         $map->addCrmData(['newsletterCountryD' => 'no']);
         $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
-        
+    
         $map->addCrmData(['newsletterCountryD' => '']);
+        $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
+    
+        $map->addCrmData(['newsletterCountryD' => null]);
         $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
     }
     

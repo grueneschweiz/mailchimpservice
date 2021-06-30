@@ -10,7 +10,7 @@ interface GroupConditionInterface
 {
     public function __construct(string $trueCondition, string $falseCondition);
     
-    public function setFromCrmData(string $crmStringData);
+    public function setFromCrmData(?string $crmStringData);
     
     public function setFromBool(bool $bool);
     

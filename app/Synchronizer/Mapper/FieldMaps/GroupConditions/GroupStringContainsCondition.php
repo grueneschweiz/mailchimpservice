@@ -18,15 +18,15 @@ class GroupStringContainsCondition implements GroupConditionInterface
         $this->falseCondition = $falseCondition;
     }
     
-    public function setFromCrmData(string $crmStringData)
+    public function setFromCrmData(?string $crmStringData)
     {
         // the false condition must always have precedence over the true condition
-        if (str_contains($crmStringData, $this->falseCondition)) {
+        if (str_contains((string)$crmStringData, $this->falseCondition)) {
             $this->value = false;
             return;
         }
-        
-        $this->value = str_contains($crmStringData, $this->trueCondition);
+    
+        $this->value = str_contains((string)$crmStringData, $this->trueCondition);
     }
     
     public function setFromBool(bool $bool)
