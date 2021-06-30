@@ -10,6 +10,7 @@ class CrmValue
     public const MODE_APPEND = 'append';
     public const MODE_REPLACE_EMPTY = 'replaceEmpty';
     public const MODE_ADD_IF_NEW = 'addIfNew';
+    public const MODE_REMOVE = 'remove';
     
     private string $key;
     private array|string|int|null $value;
@@ -77,7 +78,8 @@ class CrmValue
             self::MODE_APPEND,
             self::MODE_REPLACE,
             self::MODE_ADD_IF_NEW,
-            self::MODE_REPLACE_EMPTY
+            self::MODE_REPLACE_EMPTY,
+            self::MODE_REMOVE
         ];
         if (!in_array($mode, $allowedModes)) {
             throw new \InvalidArgumentException("Invalid mode: $mode");

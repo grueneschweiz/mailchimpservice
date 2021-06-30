@@ -132,8 +132,8 @@ class MailchimpToCrmSynchronizer
                 $mergeFields = $this->extractMergeFields($mcData);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $note = sprintf("%s: Mailchimp reported the email as invalid. Email status changed.", date('Y-m-d H:i'));
-                $crmData['emailStatus'] = new CrmValue('emailStatus', 'invalid', CrmValue::MODE_REPLACE);
-                $crmData['notesCountry'] = new CrmValue('notesCountry', $note, CrmValue::MODE_APPEND);
+                $crmData['emailStatus'] = [['value' => 'invalid', 'mode' => CrmValue::MODE_REPLACE]];
+                $crmData['notesCountry'] = [['value' => $note, 'mode' => CrmValue::MODE_APPEND]];
                 Log::debug("MC_CLEANED_EMAIL: Mark email invalid in crm (crm id: $crmId).");
                 break;
             
@@ -152,7 +152,8 @@ class MailchimpToCrmSynchronizer
                 $mcData = $this->mcClient->getSubscriber($email);
                 $mergeFields = $this->extractMergeFields($mcData);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
-                $crmData = [$this->updateEmail($mcData)];
+                $crmValue = $this->updateEmail($mcData)[0];
+                $crmData = [$crmValue->getKey() => [['value' => $crmValue->getValue(), 'mode' => $crmValue->getMode()]]];
                 Log::debug("MC_EMAIL_UPDATE: Update email in crm (crm id: $crmId).");
                 break;
     
@@ -165,12 +166,7 @@ class MailchimpToCrmSynchronizer
                 ));
         }
     
-        $putData = [];
-        foreach ($crmData as $crmValue) {
-            $putData[$crmValue->getKey()] = ['value' => $crmValue->getValue(), 'mode' => $crmValue->getMode()];
-        }
-    
-        $this->crmClient->put('member/' . $crmId, $putData);
+        $this->crmClient->put('member/' . $crmId, $crmData);
     
         Log::debug(sprintf(
             "Sync successful (mailchimp record id: %d)",
@@ -233,12 +229,12 @@ class MailchimpToCrmSynchronizer
      *
      * @param array $mcData
      *
-     * @return CrmValue of the email field
+     * @return CrmValue[] of the email field
      *
      * @throws \App\Exceptions\ConfigException
      * @throws \App\Exceptions\ParseMailchimpDataException
      */
-    private function updateEmail(array $mcData): CrmValue
+    private function updateEmail(array $mcData): array
     {
         foreach ($this->config->getFieldMaps() as $map) {
             if ($map->isEmail()) {

@@ -50,9 +50,9 @@ class FieldMapMergeTest extends TestCase
         $map = new FieldMapMerge($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
     
-        self::assertEquals('firstName', $map->getCrmData()->getKey());
-        self::assertEquals('Hugo', $map->getCrmData()->getValue());
-        self::assertEquals('replace', $map->getCrmData()->getMode());
+        self::assertEquals('firstName', $map->getCrmData()[0]->getKey());
+        self::assertEquals('Hugo', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     private function getMailchimpData()
@@ -70,10 +70,10 @@ class FieldMapMergeTest extends TestCase
         $data = $this->getMailchimpData();
         $data['merge_fields']['FNAME'] = '';
         $map->addMailchimpData($data);
-        
-        self::assertEquals('firstName', $map->getCrmData()->getKey());
-        self::assertEquals('asdf', $map->getCrmData()->getValue());
-        self::assertEquals('replace', $map->getCrmData()->getMode());
+    
+        self::assertEquals('firstName', $map->getCrmData()[0]->getKey());
+        self::assertEquals('asdf', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     public function testGetMailchimpDataArray()

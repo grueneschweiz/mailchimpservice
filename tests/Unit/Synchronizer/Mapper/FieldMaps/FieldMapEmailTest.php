@@ -36,9 +36,9 @@ class FieldMapEmailTest extends TestCase
         $map = new FieldMapEmail($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
     
-        self::assertEquals('email1', $map->getCrmData()->getKey());
-        self::assertEquals('info@example.org', $map->getCrmData()->getValue());
-        self::assertEquals('replace', $map->getCrmData()->getMode());
+        self::assertEquals('email1', $map->getCrmData()[0]->getKey());
+        self::assertEquals('info@example.org', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     private function getMailchimpData()

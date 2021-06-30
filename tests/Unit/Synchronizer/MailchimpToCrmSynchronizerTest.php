@@ -99,6 +99,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 '1851be732e' => false,
                 '294df36247' => true,
                 '633e3c8dd7' => false,
+                'bba5d2d564' => true,
             ],
             'tags' => [],
         ];
@@ -222,18 +223,22 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 ],
             ],
         ];
-        
+    
         $this->sync->syncSingle($webhookData);
-        
+    
         /** @var Request $put */
         $put = $this->crmRequestHistory[1]['request'];
         $data = json_decode((string)$put->getBody(), true);
-        
+    
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
-        $this->assertEquals('no', $data['newsletterCountryD']['value']);
-        $this->assertEquals('no', $data['newsletterCountryF']['value']);
-        $this->assertEquals('no', $data['pressReleaseCountryD']['value']);
-        $this->assertEquals('no', $data['pressReleaseCountryF']['value']);
+        $this->assertEquals('no', $data['newsletterCountryD'][0]['value']);
+        $this->assertEquals('no', $data['newsletterCountryF'][0]['value']);
+        $this->assertEquals('no', $data['pressReleaseCountryD'][0]['value']);
+        $this->assertEquals('no', $data['pressReleaseCountryF'][0]['value']);
+        $this->assertEquals('PolitletterUnsubscribed', $data['notesCountry'][0]['value']);
+        $this->assertEquals('append', $data['notesCountry'][0]['mode']);
+        $this->assertEquals('PolitletterDE', $data['notesCountry'][1]['value']);
+        $this->assertEquals('remove', $data['notesCountry'][1]['mode']);
     }
     
     private function mockCrmResponse(array $responses)
@@ -321,19 +326,19 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 'reason' => 'hard',
             ],
         ];
-        
+    
         $this->sync->syncSingle($webhookData);
-        
+    
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
         $data = json_decode((string)$put->getBody(), true);
-        
+    
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
-        $this->assertEquals('invalid', $data['emailStatus']['value']);
-        $this->assertEquals('replace', $data['emailStatus']['mode']);
-        $this->assertStringContainsString('Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry']['value']);
-        $this->assertEquals('append', $data['notesCountry']['mode']);
-        
+        $this->assertEquals('invalid', $data['emailStatus'][0]['value']);
+        $this->assertEquals('replace', $data['emailStatus'][0]['mode']);
+        $this->assertStringContainsString('Mailchimp reported the email as invalid. Email status changed.', $data['notesCountry'][0]['value']);
+        $this->assertEquals('append', $data['notesCountry'][0]['mode']);
+    
         // cleanup
         $this->mcClientTesting->deleteSubscriber($email);
     }
@@ -365,6 +370,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 '1851be732e' => false,
                 '294df36247' => true,
                 '633e3c8dd7' => false,
+                'bba5d2d564' => true,
             ],
             'tags' => [],
         ];
@@ -385,19 +391,23 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                 ],
             ],
         ];
-        
+    
         $this->sync->syncSingle($webhookData);
-        
+    
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
         $data = json_decode((string)$put->getBody(), true);
-        
+    
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
-        $this->assertEquals('yes', $data['newsletterCountryD']['value']);
-        $this->assertEquals('no', $data['newsletterCountryF']['value']);
-        $this->assertEquals('yes', $data['pressReleaseCountryD']['value']);
-        $this->assertEquals('no', $data['pressReleaseCountryF']['value']);
-        
+        $this->assertEquals('yes', $data['newsletterCountryD'][0]['value']);
+        $this->assertEquals('no', $data['newsletterCountryF'][0]['value']);
+        $this->assertEquals('yes', $data['pressReleaseCountryD'][0]['value']);
+        $this->assertEquals('no', $data['pressReleaseCountryF'][0]['value']);
+        $this->assertEquals('PolitletterDE', $data['notesCountry'][0]['value']);
+        $this->assertEquals('append', $data['notesCountry'][0]['mode']);
+        $this->assertEquals('PolitletterUnsubscribed', $data['notesCountry'][1]['value']);
+        $this->assertEquals('remove', $data['notesCountry'][1]['mode']);
+    
         // cleanup
         $this->mcClientTesting->deleteSubscriber($email);
     }
@@ -450,8 +460,8 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
         $data = json_decode((string)$put->getBody(), true);
-        
+    
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
-        $this->assertEquals($newEmail, $data['email1']['value']);
+        $this->assertEquals($newEmail, $data['email1'][0]['value']);
     }
 }

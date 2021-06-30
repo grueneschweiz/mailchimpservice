@@ -14,14 +14,12 @@ class MapperTest extends TestCase
         $crmData = $mapper->mailchimpToCrm($this->getMailchimpData());
     
         self::assertArrayHasKey('email1', $crmData);
-        self::assertEquals('email1', $crmData['email1']->getKey());
-        self::assertEquals('info@example.org', $crmData['email1']->getValue());
-        self::assertEquals('replace', $crmData['email1']->getMode());
+        self::assertEquals('info@example.org', $crmData['email1'][0]['value']);
+        self::assertEquals('replace', $crmData['email1'][0]['mode']);
     
         self::assertArrayHasKey('newsletterCountryD', $crmData);
-        self::assertEquals('newsletterCountryD', $crmData['newsletterCountryD']->getKey());
-        self::assertEquals('yes', $crmData['newsletterCountryD']->getValue());
-        self::assertEquals('replace', $crmData['newsletterCountryD']->getMode());
+        self::assertEquals('yes', $crmData['newsletterCountryD'][0]['value']);
+        self::assertEquals('replace', $crmData['newsletterCountryD'][0]['mode']);
     }
     
     private function getFieldMaps()

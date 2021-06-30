@@ -28,10 +28,10 @@ class GroupStringBoolCondition implements GroupConditionInterface
         $this->value = $bool;
     }
     
-    public function getCrmValue(string $crmFieldKey): CrmValue
+    public function getCrmValue(string $crmFieldKey): array
     {
         $value = $this->value ? $this->trueCondition : $this->falseCondition;
-        return new CrmValue($crmFieldKey, $value, CrmValue::MODE_REPLACE);
+        return [new CrmValue($crmFieldKey, $value, CrmValue::MODE_REPLACE)];
     }
     
     public function getMailchimpValue(): bool

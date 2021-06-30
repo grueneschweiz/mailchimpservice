@@ -34,10 +34,14 @@ class GroupStringContainsCondition implements GroupConditionInterface
         $this->value = $bool;
     }
     
-    public function getCrmValue(string $crmFieldKey): CrmValue
+    public function getCrmValue(string $crmFieldKey): array
     {
-        $value = $this->value ? $this->trueCondition : $this->falseCondition;
-        return new CrmValue($crmFieldKey, $value, CrmValue::MODE_APPEND);
+        $append = $this->value ? $this->trueCondition : $this->falseCondition;
+        $remove = !$this->value ? $this->trueCondition : $this->falseCondition;
+        return [
+            new CrmValue($crmFieldKey, $append, CrmValue::MODE_APPEND),
+            new CrmValue($crmFieldKey, $remove, CrmValue::MODE_REMOVE)
+        ];
     }
     
     public function getMailchimpValue(): bool

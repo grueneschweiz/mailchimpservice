@@ -95,9 +95,9 @@ class FieldMapGroup extends FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return CrmValue
+     * @return CrmValue[]
      */
-    function getCrmData(): CrmValue
+    function getCrmData(): array
     {
         return $this->condition->getCrmValue($this->crmKey);
     }

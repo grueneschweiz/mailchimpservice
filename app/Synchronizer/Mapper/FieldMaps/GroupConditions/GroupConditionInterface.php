@@ -14,7 +14,11 @@ interface GroupConditionInterface
     
     public function setFromBool(bool $bool);
     
-    public function getCrmValue(string $crmFieldKey): CrmValue;
+    /**
+     * @param string $crmFieldKey
+     * @return CrmValue[]
+     */
+    public function getCrmValue(string $crmFieldKey): array;
     
     public function getMailchimpValue(): bool;
 }

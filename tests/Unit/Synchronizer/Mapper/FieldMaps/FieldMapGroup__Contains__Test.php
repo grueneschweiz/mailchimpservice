@@ -11,10 +11,10 @@ class FieldMapGroup__Contains__Test extends TestCase
     {
         $map = new FieldMapGroup($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
-        
-        self::assertEquals('notesCountry', $map->getCrmData()->getKey());
-        self::assertStringContainsString('PolitletterDE', $map->getCrmData()->getValue());
-        self::assertEquals('append', $map->getCrmData()->getMode());
+    
+        self::assertEquals('notesCountry', $map->getCrmData()[0]->getKey());
+        self::assertStringContainsString('PolitletterDE', $map->getCrmData()[0]->getValue());
+        self::assertEquals('append', $map->getCrmData()[0]->getMode());
     }
     
     private function getConfig()
@@ -46,12 +46,16 @@ class FieldMapGroup__Contains__Test extends TestCase
                 'bba5d2d564' => false
             ]
         ];
-        
+    
         $map->addMailchimpData($data);
-        
-        self::assertEquals('notesCountry', $map->getCrmData()->getKey());
-        self::assertStringContainsString('PolitletterUnsubscribed', $map->getCrmData()->getValue());
-        self::assertEquals('append', $map->getCrmData()->getMode());
+    
+        self::assertEquals('notesCountry', $map->getCrmData()[0]->getKey());
+        self::assertStringContainsString('PolitletterUnsubscribed', $map->getCrmData()[0]->getValue());
+        self::assertEquals('append', $map->getCrmData()[0]->getMode());
+    
+        self::assertEquals('notesCountry', $map->getCrmData()[1]->getKey());
+        self::assertStringContainsString('PolitletterDE', $map->getCrmData()[1]->getValue());
+        self::assertEquals('remove', $map->getCrmData()[1]->getMode());
     }
     
     public function testGetMailchimpDataArray__add()

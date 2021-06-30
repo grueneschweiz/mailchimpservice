@@ -72,11 +72,11 @@ class FieldMapEmail extends FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return CrmValue
+     * @return CrmValue[]
      */
-    function getCrmData()
+    function getCrmData(): array
     {
-        return new CrmValue($this->crmKey, $this->value, CrmValue::MODE_REPLACE);
+        return [new CrmValue($this->crmKey, $this->value, CrmValue::MODE_REPLACE)];
     }
     
     /**

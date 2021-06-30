@@ -11,10 +11,10 @@ class FieldMapGroup__Bool__Test extends TestCase
     {
         $map = new FieldMapGroup($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
-        
-        self::assertEquals('newsletterCountryD', $map->getCrmData()->getKey());
-        self::assertEquals('yes', $map->getCrmData()->getValue());
-        self::assertEquals('replace', $map->getCrmData()->getMode());
+    
+        self::assertEquals('newsletterCountryD', $map->getCrmData()[0]->getKey());
+        self::assertEquals('yes', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     private function getConfig()
@@ -46,12 +46,12 @@ class FieldMapGroup__Bool__Test extends TestCase
                 '55f795def4' => false
             ]
         ];
-        
+    
         $map->addMailchimpData($data);
-        
-        self::assertEquals('newsletterCountryD', $map->getCrmData()->getKey());
-        self::assertEquals('no', $map->getCrmData()->getValue());
-        self::assertEquals('replace', $map->getCrmData()->getMode());
+    
+        self::assertEquals('newsletterCountryD', $map->getCrmData()[0]->getKey());
+        self::assertEquals('no', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     public function testGetMailchimpDataArray__add()

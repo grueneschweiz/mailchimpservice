@@ -62,7 +62,7 @@ fields:
     mailchimpCategoryId: bba5d2d564
     type: group
     trueContainsString: PolitletterDE
-    falseContainsString: PolitletterUnsubscribed
+    falseContainsString: PolitletterUnsubscribedDE
     sync: both
   - crmKey: memberStatusCountry
     mailchimpTagName: member

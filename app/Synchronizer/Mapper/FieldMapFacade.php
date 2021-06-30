@@ -81,9 +81,9 @@ class FieldMapFacade
     /**
      * Get field data ready to merge into request array for crm
      *
-     * @return CrmValue
+     * @return CrmValue[]
      */
-    public function getCrmData(): CrmValue
+    public function getCrmData(): array
     {
         return $this->field->getCrmData();
     }

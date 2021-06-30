@@ -79,11 +79,11 @@ class FieldMapTag extends FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return CrmValue
+     * @return CrmValue[]
      */
-    function getCrmData()
+    function getCrmData(): array
     {
-        return null; // don't do anything, we don't allow syncing from mailchimp to crm
+        return []; // don't do anything, we don't allow syncing from mailchimp to crm
     }
     
     /**

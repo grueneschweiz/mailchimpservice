@@ -37,7 +37,12 @@ class Mapper
             if ($map->canSyncToCrm()) {
                 $map->addMailchimpData($mailchimpData);
                 $crmData = $map->getCrmData();
-                $data[$crmData->getKey()] = $crmData;
+                foreach ($crmData as $action) {
+                    $data[$action->getKey()][] = [
+                        'value' => $action->getValue(),
+                        'mode' => $action->getMode()
+                    ];
+                }
             }
         }
         
