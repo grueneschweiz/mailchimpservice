@@ -20,7 +20,7 @@ class Sync extends Command
     protected $signature = 'sync:all
                             {direction : Possible values are "' . self::DIRECTION_CRM . '" and "' . self::DIRECTION_MAILCHIMP . '".}
                             {config : The name of the config file to use.}
-                            {--limit=100 : How may records should be syncronized at a time.}
+                            {--limit=100 : How may records should be synchronized at a time.}
                             {--offset=0 : How many records should be skipped. Usually used in combination with --limit.}
                             {--all : Ignore revision and sync all records, not just changes.}
                             {--force : Ignore locks of previously started (running or dead) sync processes.}';
@@ -98,7 +98,7 @@ class Sync extends Command
         }
         
         if (!is_numeric($offset) || (int)$offset < 0) {
-            $this->error('The offset option musst pass an integer >= 0.');
+            $this->error('The offset option must pass an integer >= 0.');
             
             return 1;
         }
@@ -107,7 +107,7 @@ class Sync extends Command
             $sync = new CrmToMailchimpSynchronizer($this->argument('config'));
     
             if ($force) {
-                $this->info('Force sync -> removing locks now.');
+                $this->info('Force sync -> removing locks if present.');
                 $sync->unlock();
             }
             

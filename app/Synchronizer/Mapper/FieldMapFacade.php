@@ -5,6 +5,7 @@ namespace App\Synchronizer\Mapper;
 
 
 use App\Exceptions\ConfigException;
+use App\Synchronizer\CrmValue;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapAutotag;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapEmail;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
@@ -80,11 +81,11 @@ class FieldMapFacade
     /**
      * Get field data ready to merge into request array for crm
      *
-     * @return array
+     * @return CrmValue[]
      */
-    public function getCrmDataArray(): array
+    public function getCrmData(): array
     {
-        return $this->field->getCrmDataArray();
+        return $this->field->getCrmData();
     }
     
     /**

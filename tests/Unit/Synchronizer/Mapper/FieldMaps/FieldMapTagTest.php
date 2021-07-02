@@ -29,7 +29,7 @@ class FieldMapTagTest extends TestCase
         $map = new FieldMapTag($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
         
-        $this->assertEmpty($map->getCrmDataArray());
+        $this->assertEmpty($map->getCrmData());
     }
     
     private function getMailchimpData()

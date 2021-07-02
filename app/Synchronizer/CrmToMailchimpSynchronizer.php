@@ -339,7 +339,10 @@ class CrmToMailchimpSynchronizer
      */
     public function unlock()
     {
-        rmdir("{$this->lockRoot}/{$this->configName}.lock");
+        $lockfile = "{$this->lockRoot}/{$this->configName}.lock";
+        if (file_exists($lockfile)) {
+            rmdir($lockfile);
+        }
     }
     
     /**

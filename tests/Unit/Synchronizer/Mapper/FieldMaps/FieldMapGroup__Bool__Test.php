@@ -5,14 +5,16 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 
 use Tests\TestCase;
 
-class FieldMapGroupTest extends TestCase
+class FieldMapGroup__Bool__Test extends TestCase
 {
-    public function testGetCrmDataArray__add()
+    public function testGetCrmData__add()
     {
         $map = new FieldMapGroup($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
-        
-        $this->assertEquals(['newsletterCountryD' => 'yes'], $map->getCrmDataArray());
+    
+        self::assertEquals('newsletterCountryD', $map->getCrmData()[0]->getKey());
+        self::assertEquals('yes', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     private function getConfig()
@@ -36,7 +38,7 @@ class FieldMapGroupTest extends TestCase
         ];
     }
     
-    public function testGetCrmDataArray__remove()
+    public function testGetCrmData__remove()
     {
         $map = new FieldMapGroup($this->getConfig());
         $data = [
@@ -44,10 +46,12 @@ class FieldMapGroupTest extends TestCase
                 '55f795def4' => false
             ]
         ];
-        
+    
         $map->addMailchimpData($data);
-        
-        $this->assertEquals(['newsletterCountryD' => 'no'], $map->getCrmDataArray());
+    
+        self::assertEquals('newsletterCountryD', $map->getCrmData()[0]->getKey());
+        self::assertEquals('no', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     public function testGetMailchimpDataArray__add()
@@ -68,11 +72,14 @@ class FieldMapGroupTest extends TestCase
     public function testGetMailchimpDataArray__remove()
     {
         $map = new FieldMapGroup($this->getConfig());
-        
+    
         $map->addCrmData(['newsletterCountryD' => 'no']);
         $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
-        
+    
         $map->addCrmData(['newsletterCountryD' => '']);
+        $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
+    
+        $map->addCrmData(['newsletterCountryD' => null]);
         $this->assertEquals(['55f795def4' => false], $map->getMailchimpDataArray());
     }
     

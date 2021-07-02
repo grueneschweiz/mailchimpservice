@@ -7,6 +7,9 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 use App\Exceptions\ConfigException;
 use App\Exceptions\ParseCrmDataException;
 use App\Exceptions\ParseMailchimpDataException;
+use App\Synchronizer\CrmValue;
+use App\Synchronizer\Mapper\FieldMaps\GroupConditions\GroupConditionFactory;
+use App\Synchronizer\Mapper\FieldMaps\GroupConditions\GroupConditionInterface;
 
 /**
  * Mapper for the group fields
@@ -19,17 +22,20 @@ class FieldMapGroup extends FieldMap
 {
     public const MAILCHIMP_PARENT_KEY = 'interests';
     
-    private $mailchimpCategoryId;
-    private $trueCondition;
-    private $falseCondition;
+    private string $mailchimpCategoryId;
     
-    private $mailchimpValue;
-    private $crmValue;
+    private GroupConditionInterface $condition;
     
     /**
      * FieldMapMerge constructor.
      *
-     * @param array $config {crmKey: string, mailchimpCategoryId: string, trueCondition: string, falseCondition: string, sync: {'both', 'toMailchimp'}}
+     * @param array $config {
+     *  crmKey: string,
+     *  mailchimpCategoryId: string,
+     *  (trueCondition|trueContainsString): string,
+     *  (falseCondition|trueContainsString): string,
+     *  sync: {'both', 'toMailchimp'}
+     * }
      *
      * @throws ConfigException
      */
@@ -41,16 +47,8 @@ class FieldMapGroup extends FieldMap
             throw new ConfigException('Field: Missing mailchimpCategoryId definition');
         }
         $this->mailchimpCategoryId = $config['mailchimpCategoryId'];
-        
-        if (empty($config['trueCondition'])) {
-            throw new ConfigException("Field: Missing 'trueCondition' definition");
-        }
-        $this->trueCondition = $config['trueCondition'];
-        
-        if (empty($config['falseCondition'])) {
-            throw new ConfigException("Field: Missing 'falseCondition' definition");
-        }
-        $this->falseCondition = $config['falseCondition'];
+    
+        $this->condition = GroupConditionFactory::makeFrom($config);
     }
     
     /**
@@ -74,9 +72,8 @@ class FieldMapGroup extends FieldMap
         }
         
         $inGroup = $data[self::MAILCHIMP_PARENT_KEY][$this->mailchimpCategoryId];
-        
-        $this->mailchimpValue = $inGroup;
-        $this->crmValue = $inGroup ? $this->trueCondition : $this->falseCondition;
+    
+        $this->condition->setFromBool($inGroup);
     }
     
     /**
@@ -91,19 +88,18 @@ class FieldMapGroup extends FieldMap
         if (!array_key_exists($this->crmKey, $data)) {
             throw new ParseCrmDataException(sprintf("Missing key '%s'", $this->crmKey));
         }
-        
-        $this->mailchimpValue = $data[$this->crmKey] === $this->trueCondition;
-        $this->crmValue = $data[$this->crmKey];
+    
+        $this->condition->setFromCrmData($data[$this->crmKey]);
     }
     
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return array
+     * @return CrmValue[]
      */
-    function getCrmDataArray()
+    function getCrmData(): array
     {
-        return [$this->crmKey => $this->crmValue];
+        return $this->condition->getCrmValue($this->crmKey);
     }
     
     /**
@@ -113,7 +109,7 @@ class FieldMapGroup extends FieldMap
      */
     function getMailchimpDataArray()
     {
-        return [$this->mailchimpCategoryId => $this->mailchimpValue];
+        return [$this->mailchimpCategoryId => $this->condition->getMailchimpValue()];
     }
     
     /**

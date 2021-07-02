@@ -31,12 +31,14 @@ class FieldMapEmailTest extends TestCase
         ];
     }
     
-    public function testGetCrmDataArray()
+    public function testGetCrmDatay()
     {
         $map = new FieldMapEmail($this->getConfig());
         $map->addMailchimpData($this->getMailchimpData());
-        
-        $this->assertEquals(['email1' => 'info@example.org'], $map->getCrmDataArray());
+    
+        self::assertEquals('email1', $map->getCrmData()[0]->getKey());
+        self::assertEquals('info@example.org', $map->getCrmData()[0]->getValue());
+        self::assertEquals('replace', $map->getCrmData()[0]->getMode());
     }
     
     private function getMailchimpData()

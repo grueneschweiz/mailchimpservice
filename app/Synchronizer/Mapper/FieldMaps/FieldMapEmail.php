@@ -7,6 +7,7 @@ namespace App\Synchronizer\Mapper\FieldMaps;
 use App\Exceptions\ConfigException;
 use App\Exceptions\ParseCrmDataException;
 use App\Exceptions\ParseMailchimpDataException;
+use App\Synchronizer\CrmValue;
 
 /**
  * Mapper for the email field
@@ -71,11 +72,11 @@ class FieldMapEmail extends FieldMap
     /**
      * Get key value pair ready for storing in the crm
      *
-     * @return array
+     * @return CrmValue[]
      */
-    function getCrmDataArray()
+    function getCrmData(): array
     {
-        return [$this->crmKey => $this->value];
+        return [new CrmValue($this->crmKey, $this->value, CrmValue::MODE_REPLACE)];
     }
     
     /**
