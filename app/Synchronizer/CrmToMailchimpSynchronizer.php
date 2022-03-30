@@ -18,7 +18,6 @@ use App\Revision;
 use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -26,6 +25,7 @@ class CrmToMailchimpSynchronizer
 {
     private const LOCK_BASE_FOLDER_NAME = 'locks';
     private const MAX_LOCK_TIME = 43200; // 12h
+    private const MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC = '-7 days';
     
     /**
      * @var Config
@@ -129,27 +129,34 @@ class CrmToMailchimpSynchronizer
     {
         if (!$this->lock()) {
             Log::info("({$this->configName}) There is already a synchronization for running. Start of new sync job canceled.");
-            
+        
             return;
         }
-        
-        // get revision id of last successful sync (or -1 if first run)
-        $revId = $this->getLatestSuccessfullSyncRevisionId();
-        
+    
+        // get revision id of last successful sync (or -1 if no successful revision in the last X days)
+        $revision = $this->getLatestSuccessfullSyncRevision();
+        $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
+        if (!$revision) {
+            $revId = -1;
+            $log = 'No successful revision found. Doing full sync.';
+        } elseif ($revision->updated_at < $max_revision_age) {
+            $revId = -1;
+            $log = "Last successful revision {$revision->updated_at->diffForHumans()}. Doing full sync.";
+        } else {
+            $revId = $revision->id;
+            $log = "Last successful sync {$revision->updated_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
+        }
+    
         // sync all records instead of changes if all flag is set
         if ($all) {
             $revId = -1;
+            $log = 'Force sync all records regardless of changes. Doing full sync.';
         }
-        
+    
         if (0 === $offset) {
-            Log::debug("({$this->configName}) Starting to sync all changes from crm into mailchimp\nConfig: {$this->configName}");
-            
-            if (-1 === $revId) {
-                Log::debug("({$this->configName}) Syncing all records regardless of changes.");
-            } else {
-                Log::debug("({$this->configName}) Id of last successfully synced revision: $revId");
-            }
-            
+            Log::info("({$this->configName}) Starting to sync all changes from crm into mailchimp.");
+            Log::info("({$this->configName}) $log");
+        
             // get latest revision id and store it in the local database
             $this->openNewRevision();
         }
@@ -241,19 +248,14 @@ class CrmToMailchimpSynchronizer
     /**
      * Return the id of the latest successful revision
      *
-     * @return int
+     * @return Revision|null
      */
-    private function getLatestSuccessfullSyncRevisionId(): int
+    private function getLatestSuccessfullSyncRevision(): ?Revision
     {
-        try {
-            return Revision::where('config_name', $this->configName)
-                ->where('sync_successful', true)
-                ->latest()
-                ->firstOrFail()
-                ->revision_id;
-        } catch (ModelNotFoundException $e) {
-            return -1;
-        }
+        return Revision::where('config_name', $this->configName)
+            ->where('sync_successful', true)
+            ->latest()
+            ->first();
     }
     
     /**
@@ -422,7 +424,7 @@ class CrmToMailchimpSynchronizer
         // skip if record has no email address and isn't in mailchimp yet
         if (!$mcEmail && empty($crmData[$emailKey])) {
             Log::debug("({$this->configName}) Record skipped (not in mailchimp and has no email address).");
-        
+    
             return;
         }
     

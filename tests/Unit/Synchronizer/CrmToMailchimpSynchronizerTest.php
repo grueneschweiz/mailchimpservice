@@ -16,6 +16,8 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -141,7 +143,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         // assert member1 in mailchimp
         $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
         $this->assertEquals(strtolower($member1['email1']), $subscriber1['email_address']);
-        
+    
         // assert member2 not in mailchimp
         $subscriber2 = null;
         try {
@@ -149,11 +151,12 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         } catch (\Exception $e) {
         }
         $this->assertNull($subscriber2);
-        
+    
         // assert getLatestSuccessfullSyncRevisionId is 123
-        $getRevId = new \ReflectionMethod($this->sync, 'getLatestSuccessfullSyncRevisionId');
-        $getRevId->setAccessible(true);
-        $id = $getRevId->invoke($this->sync);
+        $getRev = new \ReflectionMethod($this->sync, 'getLatestSuccessfullSyncRevision');
+        $getRev->setAccessible(true);
+        $rev = $getRev->invoke($this->sync);
+        $id = $rev->revision_id;
         $this->assertEquals($revisionId, $id);
     }
     
@@ -504,12 +507,110 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         ]);
     
         $this->sync->syncAllChanges(1, 0);
-        
+    
         // assert the changed member is not present in mailchimp
         $this->expectException(MailchimpClientException::class);
         $this->mcClientTesting->getSubscriber($member1['email1']);
-        
+    
         // cleanup
         $this->mcClientTesting->deleteSubscriber($this->emailMember1);
     }
+    
+    public function testSyncAllChanges_force_sync_all_after_failing_revisions()
+    {
+        // precondition
+        $oldSuccessfulRevId = 10;
+        $oldFailedRevId = 11;
+        
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+            $oldSuccessfulRevId,
+            self::CONFIG_FILE_NAME,
+            true,
+            date_create_immutable('-30 days')->format('Y-m-d H:i:s'),
+            date_create_immutable('-30 days')->format('Y-m-d H:i:s')
+        ]);
+        
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+            $oldFailedRevId,
+            self::CONFIG_FILE_NAME,
+            false,
+            date_create_immutable('-3 seconds')->format('Y-m-d H:i:s'),
+            date_create_immutable('-3 seconds')->format('Y-m-d H:i:s')
+        ]);
+        
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        Log::shouldReceive('debug')
+            ->withAnyArgs();
+        
+        // test
+        $count = 0;
+        $expectedRegex = '/' . preg_quote('(' . self::CONFIG_FILE_NAME . ')', '/') . ' Last successful revision .*? Doing full sync./';
+        Log::shouldReceive('info')
+            ->withArgs(static function ($args) use ($expectedRegex, &$count) {
+                if (preg_match($expectedRegex, $args)) {
+                    $count++;
+                }
+                return true;
+            });
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        $this->assertEquals(1, $count, "Expected 1 log message of level INFO that matches regex: $expectedRegex");
+    }
+    
+    public function testSyncAllChanges_not_force_sync_all_after_successfull_revisions()
+    {
+        // precondition
+        $oldSuccessfulRevision = 20;
+        $newRevisionId = 21;
+        
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+            $oldSuccessfulRevision,
+            self::CONFIG_FILE_NAME,
+            true,
+            date_create_immutable('-3 seconds')->format('Y-m-d H:i:s'),
+            date_create_immutable('-3 seconds')->format('Y-m-d H:i:s')
+        ]);
+        
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($newRevisionId)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        Log::shouldReceive('debug')
+            ->withAnyArgs();
+        
+        // test
+        $count = 0;
+        $expectedRegex = '/' . preg_quote('(' . self::CONFIG_FILE_NAME . ')', '/') . ' Last successful revision .*? Doing full sync./';
+        Log::shouldReceive('info')
+            ->withArgs(static function ($args) use ($expectedRegex, &$count) {
+                if (preg_match($expectedRegex, $args)) {
+                    $count++;
+                }
+                return true;
+            });
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        $this->assertEquals(0, $count, "Expected 0 log message of level INFO that matches regex: $expectedRegex");
+    }
+    
 }
