@@ -9,6 +9,8 @@ use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
+use App\Exceptions\MergeFieldException;
+use App\Exceptions\UnsubscribedEmailException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient
@@ -125,7 +127,7 @@ class MailChimpClient
             
             if (array_key_exists('errors', $response)) {
                 foreach ($response['errors'] as $k => $v) {
-                    $message .= "\nErrors[$k] => {$v['message']}";
+                    $message .= " Errors[$k] => {$v['message']}";
                 }
             }
             
@@ -197,7 +199,7 @@ class MailChimpClient
      * Upsert subscriber
      *
      * @param array $mcData
-     * @param string $email provide email to update subscribers email address
+     * @param string $email provide old email to update subscribers email address
      * @param string $id the mailchimp id of the subscriber
      *
      * @return array|false
@@ -208,6 +210,8 @@ class MailChimpClient
      * @throws AlreadyInListException
      * @throws CleanedEmailException
      * @throws FakeEmailException
+     * @throws UnsubscribedEmailException
+     * @throws MergeFieldException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -218,19 +222,20 @@ class MailChimpClient
         if (!isset($mcData['status']) && !isset($mcData['status_if_new'])) {
             $mcData['status_if_new'] = 'subscribed';
         }
-        
+    
         if (!$email) {
             $email = $mcData['email_address'];
         }
-        
+    
         // it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
         // so we need a possibility to provide it manually.
         if (!$id) {
             $id = self::calculateSubscriberId($email);
         }
-        
-        $put = $this->client->put("lists/{$this->listId}/members/$id", $mcData);
-        
+    
+        $endpoint = "lists/{$this->listId}/members/$id";
+        $put = $this->client->put($endpoint, $mcData);
+    
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
@@ -239,14 +244,20 @@ class MailChimpClient
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) {
                 throw new CleanedEmailException($put['errors'][0]['message']);
             }
+            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) {
+                throw new UnsubscribedEmailException($put['errors'][0]['message']);
+            }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'is already a list member')) {
-                throw new AlreadyInListException($put['detail']);
+                throw new AlreadyInListException("{$put['detail']} Called endpoint: $endpoint. Data: " . print_r($mcData, true));
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
+            }
+            if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
+                throw new MergeFieldException($put['detail']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);

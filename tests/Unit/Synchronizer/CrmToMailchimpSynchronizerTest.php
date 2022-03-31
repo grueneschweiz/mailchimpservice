@@ -554,7 +554,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         // test
         $count = 0;
-        $expectedRegex = '/' . preg_quote('(' . self::CONFIG_FILE_NAME . ')', '/') . ' Last successful revision .*? Doing full sync./';
+        $expectedRegex = '/config="' . preg_quote(self::CONFIG_FILE_NAME, '/') . '" msg="Last successful revision .*? Doing full sync."/';
         Log::shouldReceive('info')
             ->withArgs(static function ($args) use ($expectedRegex, &$count) {
                 if (preg_match($expectedRegex, $args)) {
