@@ -127,7 +127,7 @@ class MailChimpClient
             
             if (array_key_exists('errors', $response)) {
                 foreach ($response['errors'] as $k => $v) {
-                    $message .= "\nErrors[$k] => {$v['message']}";
+                    $message .= " Errors[$k] => {$v['message']}";
                 }
             }
             
