@@ -11,6 +11,7 @@ use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
+use App\Exceptions\UnsubscribedEmailException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
 use App\Mail\InvalidEmailNotification;
@@ -522,7 +523,7 @@ class CrmToMailchimpSynchronizer
      *
      * @param array $mcRecord
      * @param string $email
-     * @param bool $updateEmail
+     * @param bool $updateEmail if true, $email contains the old email address
      *
      * @throws AlreadyInListException If subscriber is in list with a different
      *   id, but the issue could not be resolved automatically.
@@ -571,6 +572,16 @@ class CrmToMailchimpSynchronizer
     
             // then create a new one with the new email address
             $this->putSubscriber($mcRecord, "", false);
+        } catch (UnsubscribedEmailException $e) {
+            if ($updateEmail) {
+                Log::debug("({$this->configName}) [$email] Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
+        
+                // archive record with old email
+                $this->mailchimpClient->deleteSubscriber($mcRecord['email_address']);
+        
+                // then create a new one with the new email address
+                $this->putSubscriber($mcRecord, "", false);
+            }
         }
     }
     

@@ -9,6 +9,7 @@ use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
+use App\Exceptions\UnsubscribedEmailException;
 use DrewM\MailChimp\MailChimp;
 
 class MailChimpClient
@@ -197,7 +198,7 @@ class MailChimpClient
      * Upsert subscriber
      *
      * @param array $mcData
-     * @param string $email provide email to update subscribers email address
+     * @param string $email provide old email to update subscribers email address
      * @param string $id the mailchimp id of the subscriber
      *
      * @return array|false
@@ -208,6 +209,7 @@ class MailChimpClient
      * @throws AlreadyInListException
      * @throws CleanedEmailException
      * @throws FakeEmailException
+     * @throws UnsubscribedEmailException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -238,6 +240,9 @@ class MailChimpClient
             }
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) {
                 throw new CleanedEmailException($put['errors'][0]['message']);
+            }
+            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) {
+                throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
