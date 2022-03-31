@@ -466,7 +466,7 @@ class CrmToMailchimpSynchronizer
         // where the email address has changed in the crm
         if ($email && $email !== $main['email1']) {
             $updateEmail = true;
-            $this->logRecord('debug', $this->getEmailFromCrmData($main), "Email address has changed in crm.");
+            $this->logRecord('debug', $this->getEmailFromCrmData($main), "Email address has changed in crm. Changing address in Mailchimp from {$email} to {$this->getEmailFromCrmData($main)}.");
         } else {
             $updateEmail = false;
         }
