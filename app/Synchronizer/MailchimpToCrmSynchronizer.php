@@ -107,10 +107,14 @@ class MailchimpToCrmSynchronizer
     
             case self::MC_UNSUBSCRIBE:
                 $mergeFields = $this->extractMergeFields($mcData['data']);
-        
+                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
+                if (empty($crmId)) {
+                    $this->logWebhook('debug', $callType, $mailchimpId, "Record not linked to crm. No action taken.");
+                    break;
+                }
+    
                 // get contact from crm
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
-                $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $get = $this->crmClient->get('member/' . $crmId);
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);
