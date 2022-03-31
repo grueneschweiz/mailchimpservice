@@ -11,6 +11,7 @@ use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
+use App\Exceptions\MergeFieldException;
 use App\Exceptions\UnsubscribedEmailException;
 use App\Http\CrmClient;
 use App\Http\MailChimpClient;
@@ -490,6 +491,9 @@ class CrmToMailchimpSynchronizer
         } catch (FakeEmailException $e) {
             $this->notifyAdminInvalidEmail($mcRecord);
             Log::info("({$this->configName}) FAKE or INVALID EMAIL ({$mcRecord['email_address']}). Config admin notified.");
+        } catch (MergeFieldException $e) {
+            Log::error("({$this->configName}) {$e->getMessage()}");
+            exit(1);
         }
     }
     
@@ -535,6 +539,7 @@ class CrmToMailchimpSynchronizer
      * @throws MemberDeleteException If the deletion of a cleaned record failed.
      * @throws FakeEmailException If mailchimp recognizes a well known error
      *                            (like @gmail.con)
+     * @throws MergeFieldException Invalid merge field configuration
      */
     private function putSubscriber(array $mcRecord, string $email, bool $updateEmail)
     {

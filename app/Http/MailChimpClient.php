@@ -9,6 +9,7 @@ use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
 use App\Exceptions\MemberDeleteException;
+use App\Exceptions\MergeFieldException;
 use App\Exceptions\UnsubscribedEmailException;
 use DrewM\MailChimp\MailChimp;
 
@@ -210,6 +211,7 @@ class MailChimpClient
      * @throws CleanedEmailException
      * @throws FakeEmailException
      * @throws UnsubscribedEmailException
+     * @throws MergeFieldException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -252,6 +254,9 @@ class MailChimpClient
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
+            }
+            if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
+                throw new MergeFieldException($put['detail']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);
