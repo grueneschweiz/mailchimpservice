@@ -133,9 +133,6 @@ class CrmToMailchimpSynchronizer
             return;
         }
     
-        // set the lock's modified time to current timestamp
-        $this->updateLock();
-    
         // get revision id of last successful sync (or -1 if no successful revision in the last X days)
         $revision = $this->getLatestSuccessfullSyncRevision();
         $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
@@ -185,6 +182,7 @@ class CrmToMailchimpSynchronizer
                 if ($this->alreadySynced($crmId)) {
                     Log::debug("({$this->configName}) Record with id $crmId already synced. Skipping.");
                 } else {
+                    $this->updateLock();
                     $this->syncSingleRetry($crmId, $record);
                 }
             }
@@ -395,9 +393,9 @@ class CrmToMailchimpSynchronizer
                     Log::warning("({$this->configName}) Failed to sync record $crmId ({$record[$this->config->getCrmEmailKey()]}) to Mailchimp after tree attempts. Error: {$e->getMessage()}");
             }
         } catch (EmailComplianceException $e) {
-            Log::info("({$this->configName}) This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed.");
+            Log::info("({$this->configName}) [{$record[$this->config->getCrmEmailKey()]}] This record is in a compliance state due to unsubscribe, bounce or compliance review and cannot be subscribed.");
         } catch (MemberDeleteException $e) {
-            Log::info("({$this->configName}) " . $e->getMessage());
+            Log::info("({$this->configName}) [{$record[$this->config->getCrmEmailKey()]}] " . $e->getMessage());
         }
     }
     
