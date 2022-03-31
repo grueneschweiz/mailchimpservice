@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Mail;
 class CrmToMailchimpSynchronizer
 {
     private const LOCK_BASE_FOLDER_NAME = 'locks';
-    private const MAX_LOCK_TIME = 43200; // 12h
+    private const MAX_LOCK_TIME = 15 * 60; // 15 minutes
     private const MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC = '-7 days';
     
     /**
@@ -133,6 +133,9 @@ class CrmToMailchimpSynchronizer
             return;
         }
     
+        // set the lock's modified time to current timestamp
+        $this->updateLock();
+    
         // get revision id of last successful sync (or -1 if no successful revision in the last X days)
         $revision = $this->getLatestSuccessfullSyncRevision();
         $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
@@ -236,13 +239,25 @@ class CrmToMailchimpSynchronizer
                 return false;
             }
         }
-        
+    
         // there is a small race condition here, but it affects only the error message
         // the mkdir is race condition free and kills the process if the file exists.
-        
+    
         $lock = mkdir($this->lockFile, 0700);
-        
+    
         return $lock;
+    }
+    
+    /**
+     * Set the lock file's modified time to now
+     *
+     * @return void
+     */
+    private function updateLock()
+    {
+        if (is_dir($this->lockFile)) {
+            touch($this->lockFile);
+        }
     }
     
     /**
