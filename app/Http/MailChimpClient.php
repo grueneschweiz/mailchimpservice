@@ -222,19 +222,20 @@ class MailChimpClient
         if (!isset($mcData['status']) && !isset($mcData['status_if_new'])) {
             $mcData['status_if_new'] = 'subscribed';
         }
-        
+    
         if (!$email) {
             $email = $mcData['email_address'];
         }
-        
+    
         // it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
         // so we need a possibility to provide it manually.
         if (!$id) {
             $id = self::calculateSubscriberId($email);
         }
-        
-        $put = $this->client->put("lists/{$this->listId}/members/$id", $mcData);
-        
+    
+        $endpoint = "lists/{$this->listId}/members/$id";
+        $put = $this->client->put($endpoint, $mcData);
+    
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
@@ -250,7 +251,7 @@ class MailChimpClient
                 throw new EmailComplianceException($put['detail']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'is already a list member')) {
-                throw new AlreadyInListException($put['detail']);
+                throw new AlreadyInListException("{$put['detail']} Called endpoint: $endpoint. Data: " . print_r($mcData, true));
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
