@@ -657,6 +657,7 @@ class CrmToMailchimpSynchronizer
     
     private function logRecord(string $method, string $email, string $message): void
     {
+        $email = strtolower(trim($email));
         $more = "email=\"$email\" num={$this->syncCounter}";
         $this->log($method, $message, $more);
     }
