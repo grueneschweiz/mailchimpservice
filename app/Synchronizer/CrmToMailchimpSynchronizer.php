@@ -152,7 +152,7 @@ class CrmToMailchimpSynchronizer
             $revId = -1;
             $log = "Last successful revision {$revision->updated_at->diffForHumans()}. Doing full sync.";
         } else {
-            $revId = $revision->id;
+            $revId = $revision->revision_id;
             $log = "Last successful sync {$revision->updated_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
         }
     
