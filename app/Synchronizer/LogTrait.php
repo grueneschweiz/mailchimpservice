@@ -15,7 +15,8 @@ trait LogTrait
         $more = trim($more);
         $more = $more !== '' ? " $more " : " ";
     
-        $message = str_replace('"', '\"', $message);
+        // escape double quotes if needed. preserve leading backslashes
+        $message = preg_replace('/(?<!\\\\)(\\\\\\\\)*"/', '\1\"', $message);
     
         Log::$method("config=\"{$this->configName}\"{$more}msg=\"{$message}\"");
     }
