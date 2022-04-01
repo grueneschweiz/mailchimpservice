@@ -148,12 +148,12 @@ class CrmToMailchimpSynchronizer
         if (!$revision) {
             $revId = -1;
             $log = 'No successful revision found. Doing full sync.';
-        } elseif ($revision->updated_at < $max_revision_age) {
+        } elseif ($revision->created_at < $max_revision_age) {
             $revId = -1;
-            $log = "Last successful revision {$revision->updated_at->diffForHumans()}. Doing full sync.";
+            $log = "Last successful revision started {$revision->created_at->diffForHumans()}. Doing full sync.";
         } else {
             $revId = $revision->revision_id;
-            $log = "Last successful sync {$revision->updated_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
+            $log = "Last successful sync started {$revision->created_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
         }
     
         // sync all records instead of changes if all flag is set
