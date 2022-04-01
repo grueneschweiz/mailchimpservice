@@ -11,9 +11,12 @@ trait LogTrait
         if (!in_array($method, ['write', 'log', 'debug', 'info', 'warning', 'notice', 'error', 'critical', 'emergency'])) {
             throw new \InvalidArgumentException("Method $method not supported.");
         }
-        
+    
         $more = trim($more);
         $more = $more !== '' ? " $more " : " ";
+    
+        $message = str_replace('"', '\"', $message);
+    
         Log::$method("config=\"{$this->configName}\"{$more}msg=\"{$message}\"");
     }
 }
