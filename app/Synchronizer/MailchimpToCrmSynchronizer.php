@@ -10,7 +10,7 @@ use App\Http\MailChimpClient;
 use App\Mail\WrongSubscription;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Mail;
 
 class MailchimpToCrmSynchronizer
@@ -75,7 +75,7 @@ class MailchimpToCrmSynchronizer
      *
      * @throws \App\Exceptions\ConfigException
      * @throws \App\Exceptions\ParseMailchimpDataException
-     * @throws RequestException
+     * @throws GuzzleException
      * @throws \App\Exceptions\ParseCrmDataException
      * @throws \Exception
      */

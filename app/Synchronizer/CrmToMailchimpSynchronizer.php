@@ -19,7 +19,7 @@ use App\Mail\InvalidEmailNotification;
 use App\Revision;
 use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -131,7 +131,7 @@ class CrmToMailchimpSynchronizer
      *
      * @throws \App\Exceptions\ConfigException
      * @throws \App\Exceptions\ParseCrmDataException
-     * @throws RequestException
+     * @throws GuzzleException
      * @throws \Exception
      */
     public function syncAllChanges(int $limit = 100, int $offset = 0, bool $all = false)
@@ -152,7 +152,7 @@ class CrmToMailchimpSynchronizer
             $revId = -1;
             $log = "Last successful revision {$revision->updated_at->diffForHumans()}. Doing full sync.";
         } else {
-            $revId = $revision->id;
+            $revId = $revision->revision_id;
             $log = "Last successful sync {$revision->updated_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
         }
     
@@ -171,17 +171,31 @@ class CrmToMailchimpSynchronizer
         }
         
         while (true) {
+            $this->log('debug', sprintf(
+                "Requesting next %d records starting at %d.",
+                $limit,
+                $offset,
+            ));
+    
             // get changed members
-            $get = $this->crmClient->get("member/changed/$revId/$limit/$offset");
-            $crmData = json_decode((string)$get->getBody(), true);
-            
+            try {
+                $get = $this->crmClient->get("member/changed/$revId/$limit/$offset");
+                $crmData = json_decode((string)$get->getBody(), true, 512, JSON_THROW_ON_ERROR);
+            } catch (GuzzleException $e) {
+                $this->log('warning', "Failed to request records. Exiting. Original error Message: {$e->getMessage()}");
+                exit(1);
+            } catch (\JsonException $e) {
+                $this->log('warning', "Failed to read changed members. Exiting. Original error Message: {$e->getMessage()}");
+                exit(1);
+            }
+    
             // base case: everything worked well. update revision id
             if (empty($crmData)) {
                 $this->log('debug', 'Everything synced.');
                 $this->closeOpenRevision();
                 $this->unlock();
                 $this->log('debug', 'Sync successful.');
-                
+        
                 return;
             }
     
@@ -287,7 +301,7 @@ class CrmToMailchimpSynchronizer
      * existing ones, a previous sync must have failed. lets resume the it
      * then, so we have a self-healing approach).
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     private function openNewRevision()
     {

@@ -7,7 +7,7 @@ namespace App\Http;
 use App\OAuthClient;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
 
 class CrmClient
@@ -87,7 +87,7 @@ class CrmClient
      *
      * @return bool
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     private function isTokenValid(): bool
     {
@@ -107,7 +107,7 @@ class CrmClient
      *
      * @return ResponseInterface
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     public function get(string $relativeUrl)
     {
@@ -124,7 +124,7 @@ class CrmClient
      *
      * @param OAuthClient $client
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     private function refreshToken(OAuthClient $client)
     {
@@ -153,7 +153,7 @@ class CrmClient
      *
      * @return ResponseInterface
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     public function post(string $relativeUrl, array $data)
     {
@@ -171,7 +171,7 @@ class CrmClient
      *
      * @return ResponseInterface
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     public function put(string $relativeUrl, array $data)
     {
