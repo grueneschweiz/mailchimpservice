@@ -19,7 +19,7 @@ use App\Mail\InvalidEmailNotification;
 use App\Revision;
 use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -131,7 +131,7 @@ class CrmToMailchimpSynchronizer
      *
      * @throws \App\Exceptions\ConfigException
      * @throws \App\Exceptions\ParseCrmDataException
-     * @throws RequestException
+     * @throws GuzzleException
      * @throws \Exception
      */
     public function syncAllChanges(int $limit = 100, int $offset = 0, bool $all = false)
@@ -287,7 +287,7 @@ class CrmToMailchimpSynchronizer
      * existing ones, a previous sync must have failed. lets resume the it
      * then, so we have a self-healing approach).
      *
-     * @throws RequestException
+     * @throws GuzzleException
      */
     private function openNewRevision()
     {
