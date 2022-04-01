@@ -138,7 +138,7 @@ class CrmToMailchimpSynchronizer
     {
         if (!$this->lock()) {
             $this->log('info', 'There is already a synchronization for running. Start of new sync job canceled.');
-        
+    
             return;
         }
     
@@ -165,7 +165,7 @@ class CrmToMailchimpSynchronizer
         if (0 === $offset) {
             $this->log('info', 'Starting to sync all changes from crm into mailchimp.');
             $this->log('info', $log);
-    
+        
             // get latest revision id and store it in the local database
             $this->openNewRevision();
         }
@@ -195,7 +195,7 @@ class CrmToMailchimpSynchronizer
                 $this->closeOpenRevision();
                 $this->unlock();
                 $this->log('debug', 'Sync successful.');
-        
+    
                 return;
             }
     
@@ -430,7 +430,7 @@ class CrmToMailchimpSynchronizer
         // if the record was deleted in the crm
         if (null === $crmData) {
             $this->logRecord('debug', '', "Record $crmId was deleted in crm.");
-        
+    
             if ($mcEmail) {
                 $this->mailchimpClient->deleteSubscriber($mcEmail);
                 $this->logRecord('debug', '', "Record $crmId deleted in mailchimp.");
@@ -587,10 +587,10 @@ class CrmToMailchimpSynchronizer
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
                 $this->logRecord('debug', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
-        
+    
                 // archive record with old email
                 $this->mailchimpClient->deleteSubscriber($mcRecord['email_address']);
-        
+    
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
             }
@@ -659,13 +659,17 @@ class CrmToMailchimpSynchronizer
         if (!$crmData) {
             return "";
         }
-        
+    
         $key = $this->config->getCrmEmailKey();
-        
+    
         if (!array_key_exists($key, $crmData)) {
             return "";
         }
-        
+    
+        if (empty($crmData[$key])) {
+            return "";
+        }
+    
         return $crmData[$key];
     }
     
