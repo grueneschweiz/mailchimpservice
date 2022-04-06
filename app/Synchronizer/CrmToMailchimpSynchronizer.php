@@ -492,7 +492,7 @@ class CrmToMailchimpSynchronizer
         try {
             $this->putSubscriber($mcRecord, $email, $updateEmail);
         } catch (AlreadyInListException $e) {
-            $this->logRecord('warning', $mcRecord['email_address'], "Mailchimp claims subscriber is already in list, but with a different id. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: {$e->getMessage()}");
+            $this->logRecord('warning', $mcRecord['email_address'], "Mailchimp claims subscriber is already in list. However we could not find an exact match for this email, so we did not take any action. The original Error message is still valid: {$e->getMessage()}");
         } catch (InvalidEmailException $e) {
             $this->logRecord('info', $mcRecord['email_address'], "INVALID EMAIL. Record skipped.");
         } catch (FakeEmailException $e) {
@@ -594,10 +594,10 @@ class CrmToMailchimpSynchronizer
             $this->putSubscriber($mcRecord, "", false);
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
-                $this->logRecord('debug', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
+                $this->logRecord('info', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
     
                 // archive record with old email
-                $this->mailchimpClient->deleteSubscriber($mcRecord['email_address']);
+                $this->mailchimpClient->deleteSubscriber($email);
     
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);

@@ -110,7 +110,7 @@ class MailchimpToCrmSynchronizer
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 if (empty($crmId)) {
                     $this->logWebhook('debug', $callType, $mailchimpId, "Record not linked to crm. No action taken.");
-                    break;
+                    return;
                 }
     
                 // get contact from crm

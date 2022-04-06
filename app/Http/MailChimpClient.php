@@ -16,6 +16,7 @@ use DrewM\MailChimp\MailChimp;
 class MailChimpClient
 {
     private const MC_GET_LIMIT = 1000;
+    private const API_WRITE_TIMEOUT = 30; // seconds
     
     /**
      * The Mailchimp client object
@@ -234,7 +235,7 @@ class MailChimpClient
         }
     
         $endpoint = "lists/{$this->listId}/members/$id";
-        $put = $this->client->put($endpoint, $mcData);
+        $put = $this->client->put($endpoint, $mcData, self::API_WRITE_TIMEOUT);
     
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
@@ -253,7 +254,8 @@ class MailChimpClient
             if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Subscribed".'))
             ) {
-                throw new AlreadyInListException("{$put['detail']} Email used for id calc: $email. Called endpoint: $endpoint. Data: " . print_r($mcData, true));
+                $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
+                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . print_r($mcData, true));
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
@@ -343,7 +345,7 @@ class MailChimpClient
      */
     private function postSubscriberTags(string $id, array $tags)
     {
-        $post = $this->client->post("lists/{$this->listId}/members/$id/tags", $tags);
+        $post = $this->client->post("lists/{$this->listId}/members/$id/tags", $tags, self::API_WRITE_TIMEOUT);
         
         $this->validateResponseStatus('POST tags', $post);
         $this->validateResponseContent('POST tags', $post);
@@ -362,7 +364,7 @@ class MailChimpClient
     public function deleteSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        $delete = $this->client->delete("lists/{$this->listId}/members/$id");
+        $delete = $this->client->delete("lists/{$this->listId}/members/$id", [], self::API_WRITE_TIMEOUT);
     
         $this->validateResponseStatus('DELETE subscriber', $delete);
         if (isset($delete['status']) && is_numeric($delete['status']) && $delete['status'] !== 200) {
@@ -370,6 +372,11 @@ class MailChimpClient
                 throw new MemberDeleteException($delete['detail']);
             }
         }
+        if (isset($delete['status']) && $delete['status'] === 404) {
+            // the record we wanted to delete does not exist and hence our request is satisfied.
+            return;
+        }
+    
         $this->validateResponseContent('DELETE subscriber', $delete);
     }
     
@@ -383,7 +390,7 @@ class MailChimpClient
     public function permanentlyDeleteSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent");
+        $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent", [], self::API_WRITE_TIMEOUT);
         
         $this->validateResponseStatus('DELETE subscriber permanently', $delete);
         $this->validateResponseContent('DELETE subscriber permanently', $delete);
