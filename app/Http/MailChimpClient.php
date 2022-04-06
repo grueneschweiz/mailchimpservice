@@ -16,6 +16,7 @@ use DrewM\MailChimp\MailChimp;
 class MailChimpClient
 {
     private const MC_GET_LIMIT = 1000;
+    private const API_WRITE_TIMEOUT = 30; // seconds
     
     /**
      * The Mailchimp client object
@@ -234,7 +235,7 @@ class MailChimpClient
         }
     
         $endpoint = "lists/{$this->listId}/members/$id";
-        $put = $this->client->put($endpoint, $mcData);
+        $put = $this->client->put($endpoint, $mcData, self::API_WRITE_TIMEOUT);
     
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
@@ -343,7 +344,7 @@ class MailChimpClient
      */
     private function postSubscriberTags(string $id, array $tags)
     {
-        $post = $this->client->post("lists/{$this->listId}/members/$id/tags", $tags);
+        $post = $this->client->post("lists/{$this->listId}/members/$id/tags", $tags, self::API_WRITE_TIMEOUT);
         
         $this->validateResponseStatus('POST tags', $post);
         $this->validateResponseContent('POST tags', $post);
@@ -362,7 +363,7 @@ class MailChimpClient
     public function deleteSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        $delete = $this->client->delete("lists/{$this->listId}/members/$id");
+        $delete = $this->client->delete("lists/{$this->listId}/members/$id", [], self::API_WRITE_TIMEOUT);
     
         $this->validateResponseStatus('DELETE subscriber', $delete);
         if (isset($delete['status']) && is_numeric($delete['status']) && $delete['status'] !== 200) {
@@ -383,7 +384,7 @@ class MailChimpClient
     public function permanentlyDeleteSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent");
+        $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent", [], self::API_WRITE_TIMEOUT);
         
         $this->validateResponseStatus('DELETE subscriber permanently', $delete);
         $this->validateResponseContent('DELETE subscriber permanently', $delete);
