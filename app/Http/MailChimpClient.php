@@ -254,7 +254,8 @@ class MailChimpClient
             if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Subscribed".'))
             ) {
-                throw new AlreadyInListException("{$put['detail']} Email used for id calc: $email. Called endpoint: $endpoint. Data: " . print_r($mcData, true));
+                $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
+                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . print_r($mcData, true));
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
