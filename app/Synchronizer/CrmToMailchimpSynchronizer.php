@@ -594,10 +594,10 @@ class CrmToMailchimpSynchronizer
             $this->putSubscriber($mcRecord, "", false);
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
-                $this->logRecord('debug', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
+                $this->logRecord('info', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
     
                 // archive record with old email
-                $this->mailchimpClient->deleteSubscriber($mcRecord['email_address']);
+                $this->mailchimpClient->deleteSubscriber($email);
     
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
