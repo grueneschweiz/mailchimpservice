@@ -372,6 +372,11 @@ class MailChimpClient
                 throw new MemberDeleteException($delete['detail']);
             }
         }
+        if (isset($delete['status']) && $delete['status'] === 404) {
+            // the record we wanted to delete does not exist and hence our request is satisfied.
+            return;
+        }
+    
         $this->validateResponseContent('DELETE subscriber', $delete);
     }
     
