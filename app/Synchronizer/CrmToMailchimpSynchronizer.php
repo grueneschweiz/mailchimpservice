@@ -558,24 +558,25 @@ class CrmToMailchimpSynchronizer
             }
             $this->logRecord('debug', $mcRecord['email_address'], "Record synchronized to mailchimp.");
         } catch (AlreadyInListException $e) {
-            // it is possible, that the subscriber id differs from the lowercase email md5-hash
-            // if this is the case, we should find the subscriber in mailchimp and use this id.
-            // one reason for a differing subscriber id could be an email address change.
+            $oldEmail = $email;
+            $newEmail = $mcRecord['email_address'];
     
-            $matches = $this->mailchimpClient->findSubscriber($email);
+            $matchesOld = $this->mailchimpClient->findSubscriber($oldEmail);
+            $matchesNew = $this->mailchimpClient->findSubscriber($newEmail);
     
-            if (0 === $matches['exact_matches']['total_items']) {
-                // we may get a match here, if the email address has changed
-                $matches = $this->mailchimpClient->findSubscriber($mcRecord['email_address']);
-            }
-    
-            if (1 === $matches['exact_matches']['total_items']) {
-                $id = $matches['exact_matches']['members'][0]['id'];
+            if ($updateEmail
+                && 1 === $matchesOld['exact_matches']['total_items']
+                && 1 === $matchesNew['exact_matches']['total_items']
+            ) {
+                // the email has changed. however, there is already a record
+                // with the new email in mailchimp. so update the record
+                // with the new email and archive the one with the old email.
         
-                $this->mailchimpClient->putSubscriber($mcRecord, null, $id);
+                // update the record with the new email
+                $this->putSubscriber($mcRecord, $newEmail, false);
         
-                $calculatedId = MailChimpClient::calculateSubscriberId($email);
-                $this->logRecord('debug', $mcRecord['email_address'], "Member was already in list with id '$id' instead of the lowercase MD5 hashed email '$calculatedId'. It was updated correctly anyhow.");
+                // archive the record with the old email
+                $this->mailchimpClient->deleteSubscriber($oldEmail);
             } else {
                 throw $e;
             }
