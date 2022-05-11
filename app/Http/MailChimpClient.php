@@ -242,10 +242,12 @@ class MailChimpClient
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
                 throw new InvalidEmailException($put['errors'][0]['message']);
             }
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Cleaned".'))) {
                 throw new CleanedEmailException($put['errors'][0]['message']);
             }
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".'))) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
@@ -255,7 +257,7 @@ class MailChimpClient
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Subscribed".'))
             ) {
                 $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
-                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . print_r($mcData, true));
+                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);

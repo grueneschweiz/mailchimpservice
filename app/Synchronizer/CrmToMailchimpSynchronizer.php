@@ -571,12 +571,14 @@ class CrmToMailchimpSynchronizer
                 // the email has changed. however, there is already a record
                 // with the new email in mailchimp. so update the record
                 // with the new email and archive the one with the old email.
+                $this->logRecord('debug', $oldEmail, "Failed to change email from $oldEmail to $newEmail because there is already a record with $newEmail in mailchimp. Trying to update $newEmail and archiving $oldEmail.");
         
                 // update the record with the new email
-                $this->putSubscriber($mcRecord, $newEmail, false);
+                $this->putSubscriber($mcRecord, "", false);
         
                 // archive the record with the old email
                 $this->mailchimpClient->deleteSubscriber($oldEmail);
+                $this->logRecord('debug', $oldEmail, "Archived record in Mailchimp.");
             } else {
                 throw $e;
             }
