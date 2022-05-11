@@ -242,10 +242,12 @@ class MailChimpClient
             if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
                 throw new InvalidEmailException($put['errors'][0]['message']);
             }
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Cleaned".'))) {
                 throw new CleanedEmailException($put['errors'][0]['message']);
             }
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".'))) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
