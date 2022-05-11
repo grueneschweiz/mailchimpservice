@@ -573,7 +573,7 @@ class CrmToMailchimpSynchronizer
                 // with the new email and archive the one with the old email.
         
                 // update the record with the new email
-                $this->putSubscriber($mcRecord, $newEmail, false);
+                $this->putSubscriber($mcRecord, "", false);
         
                 // archive the record with the old email
                 $this->mailchimpClient->deleteSubscriber($oldEmail);
