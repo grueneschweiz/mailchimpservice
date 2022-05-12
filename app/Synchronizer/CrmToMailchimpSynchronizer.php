@@ -561,13 +561,7 @@ class CrmToMailchimpSynchronizer
             $oldEmail = $email;
             $newEmail = $mcRecord['email_address'];
     
-            $matchesOld = $this->mailchimpClient->findSubscriber($oldEmail);
-            $matchesNew = $this->mailchimpClient->findSubscriber($newEmail);
-    
-            if ($updateEmail
-                && 1 === $matchesOld['exact_matches']['total_items']
-                && 1 === $matchesNew['exact_matches']['total_items']
-            ) {
+            if ($updateEmail) {
                 // the email has changed. however, there is already a record
                 // with the new email in mailchimp. so update the record
                 // with the new email and archive the one with the old email.
