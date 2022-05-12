@@ -269,7 +269,7 @@ class MailChimpClient
         $this->validateResponseContent('PUT subscriber', $put);
         
         // this is needed for updates
-        $this->updateSubscribersTags($id, $mcData['tags']);
+        $this->updateSubscribersTags($put['id'], $mcData['tags']);
         
         return $put;
     }
