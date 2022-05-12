@@ -719,6 +719,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         // cleanup
         $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($oldEmail);
     }
     
     protected function tearDown(): void
