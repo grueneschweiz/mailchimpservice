@@ -412,7 +412,7 @@ class MailChimpClient
     public function findSubscriber(string $email)
     {
         $email = urlencode($email);
-        $get = $this->client->get("search-members?query=$email");
+        $get = $this->client->get("search-members?query=email:$email");
         
         $this->validateResponseStatus('GET search subscriber', $get);
         $this->validateResponseContent('GET search subscriber', $get);
