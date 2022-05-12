@@ -12,6 +12,7 @@ use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MailchimpToCrmSynchronizer
 {
@@ -115,7 +116,12 @@ class MailchimpToCrmSynchronizer
     
                 // get contact from crm
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
-                $get = $this->crmClient->get('member/' . $crmId);
+                try {
+                    $get = $this->crmClient->get('member/' . $crmId);
+                } catch (NotFoundHttpException $e) {
+                    $this->logWebhook('debug', $callType, $mailchimpId, "Tried to unsubscribe member, but member not found in Webling. So there is also nothing to unsubscribe. No action taken.", $crmId);
+                    return;
+                }
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);
                 $this->logWebhook('debug', $callType, $mailchimpId, "Unsubscribe member in crm.", $crmId);
