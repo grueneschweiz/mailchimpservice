@@ -269,7 +269,7 @@ class MailChimpClient
         $this->validateResponseContent('PUT subscriber', $put);
         
         // this is needed for updates
-        $this->updateSubscribersTags($id, $mcData['tags']);
+        $this->updateSubscribersTags($put['id'], $mcData['tags']);
         
         return $put;
     }
@@ -396,27 +396,5 @@ class MailChimpClient
         
         $this->validateResponseStatus('DELETE subscriber permanently', $delete);
         $this->validateResponseContent('DELETE subscriber permanently', $delete);
-    }
-    
-    /**
-     * Search subscriber by email
-     *
-     * @see https://developer.mailchimp.com/documentation/mailchimp/reference/search-members/
-     *
-     * @param string $email
-     *
-     * @return array|false
-     *
-     * @throws MailchimpClientException
-     */
-    public function findSubscriber(string $email)
-    {
-        $email = urlencode($email);
-        $get = $this->client->get("search-members?query=$email");
-        
-        $this->validateResponseStatus('GET search subscriber', $get);
-        $this->validateResponseContent('GET search subscriber', $get);
-        
-        return $get;
     }
 }

@@ -102,17 +102,6 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $this->emailMember2 = Str::random() . '@mymail.com';
     }
     
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-    
-        // cleanup after failed tests
-        try {
-            $this->sync->unlock();
-        } catch (ErrorException $e) {
-        }
-    }
-    
     public function testSyncAllChanges_add_all()
     {
         $revisionId = 123;
@@ -607,10 +596,141 @@ class CrmToMailchimpSynchronizerTest extends TestCase
                 }
                 return true;
             });
-        
+    
         $this->sync->syncAllChanges(1, 0);
-        
+    
         $this->assertEquals(0, $count, "Expected 0 log message of level INFO that matches regex: $expectedRegex");
+    }
+    
+    public function testPutSubscriber__email_changed()
+    {
+        $putSubscriber = new \ReflectionMethod($this->sync, 'putSubscriber');
+        $putSubscriber->setAccessible(true);
+        
+        $oldEmail = 'old-' . Str::random() . '@mymail.com';
+        $newEmail = 'new-' . Str::random() . '@mymail.com';
+        
+        $oldMcRecord = [
+            'email_address' => $oldEmail,
+            'merge_fields' => [
+                'FNAME' => 'Email Change',
+                'LNAME' => 'Test',
+                'GENDER' => 'f',
+                'NOTES' => 'email not yet changed',
+                'WEBLINGID' => 2354552,
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+                '294df36247' => false,
+                '633e3c8dd7' => false,
+                'bba5d2d564' => false,
+            ],
+            'tags' => [
+                'member',
+                'Deutsch',
+                'ZG',
+            ],
+            'status' => 'subscribed',
+        ];
+        
+        // add subscriber first
+        $putSubscriber->invoke($this->sync, $oldMcRecord, "", false);
+        
+        // then change email and test
+        $newMcRecord = $oldMcRecord;
+        $newMcRecord['email_address'] = $newEmail;
+        $newMcRecord['merge_fields']['NOTES'] = 'email changed';
+        
+        $putSubscriber->invoke($this->sync, $newMcRecord, $oldEmail, true);
+        
+        // assert new email in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($newEmail);
+        $this->assertEquals(strtolower($newEmail), strtolower($subscriber1['email_address']));
+        
+        // assert old email not in mailchimp
+        $subscriber2 = null;
+        try {
+            $subscriber2 = $this->mcClientTesting->getSubscriber($oldEmail);
+        } catch (\Exception $e) {
+        }
+        $this->assertNull($subscriber2);
+        
+        // cleanup
+        $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
+    }
+    
+    public function testPutSubscriber__email_changed__new_email_already_in_mailchimp()
+    {
+        $putSubscriber = new \ReflectionMethod($this->sync, 'putSubscriber');
+        $putSubscriber->setAccessible(true);
+        
+        $oldEmail = 'old-' . Str::random() . '@mymail.com';
+        $newEmail = 'new-' . Str::random() . '@mymail.com';
+        
+        $oldMcRecord = [
+            'email_address' => $oldEmail,
+            'merge_fields' => [
+                'FNAME' => 'Email Change',
+                'LNAME' => 'Test',
+                'GENDER' => 'f',
+                'NOTES' => 'email not yet changed',
+                'WEBLINGID' => 2354552,
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+                '294df36247' => false,
+                '633e3c8dd7' => false,
+                'bba5d2d564' => false,
+            ],
+            'tags' => [
+                'member',
+                'Deutsch',
+                'ZG',
+            ],
+            'status' => 'subscribed',
+        ];
+        
+        // add subscriber with old email first
+        $putSubscriber->invoke($this->sync, $oldMcRecord, "", false);
+        
+        // then add subscriber with new email as well
+        $newMcRecord = $oldMcRecord;
+        $newMcRecord['email_address'] = $newEmail;
+        $putSubscriber->invoke($this->sync, $newMcRecord, "", false);
+        
+        // then test the email change
+        $newMcRecord['merge_fields']['NOTES'] = 'email changed';
+        $putSubscriber->invoke($this->sync, $newMcRecord, $oldEmail, true);
+        
+        // assert new email in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($newEmail);
+        $this->assertEquals(strtolower($newEmail), strtolower($subscriber1['email_address']));
+        
+        // assert old email archived in mailchimp
+        $archived = false;
+        try {
+            $subscriber2 = $this->mcClientTesting->getSubscriber($oldEmail);
+            $archived = $subscriber2['status'] === 'archived';
+        } catch (\Exception $e) {
+        }
+        $this->assertTrue($archived);
+        
+        // cleanup
+        $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($oldEmail);
+    }
+    
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        
+        // cleanup after failed tests
+        try {
+            $this->sync->unlock();
+        } catch (ErrorException $e) {
+        }
     }
     
 }
