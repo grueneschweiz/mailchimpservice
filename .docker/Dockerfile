@@ -1,4 +1,4 @@
-FROM php:8.0-apache
+FROM php:8.1-apache
 
 # update the repository sources list
 # and install basic dependencies
@@ -15,6 +15,10 @@ RUN docker-php-ext-install pdo_mysql
 # install & enable xdebug
 RUN pecl install xdebug
 RUN docker-php-ext-enable xdebug
+
+# install composer
+RUN curl -sS https://getcomposer.org/installer \
+    | php -- --install-dir=/usr/local/bin --filename=composer
 
 # change uid and gid of apache to docker user uid/gid
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
@@ -38,3 +42,6 @@ WORKDIR $APP_HOME
 
 # change ownership of our application
 RUN chown -R www-data:www-data $APP_HOME
+
+# run as www-data
+USER www-data:www-data
