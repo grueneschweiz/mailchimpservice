@@ -8,6 +8,7 @@ use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MailchimpTooManySubscriptionsException;
 use App\Exceptions\MemberDeleteException;
 use App\Exceptions\MergeFieldException;
 use App\Exceptions\UnsubscribedEmailException;
@@ -213,6 +214,7 @@ class MailChimpClient
      * @throws FakeEmailException
      * @throws UnsubscribedEmailException
      * @throws MergeFieldException
+     * @throws MailchimpTooManySubscriptionsException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -250,6 +252,12 @@ class MailChimpClient
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".'))) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
+            if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Deleted".'))
+            ) {
+                $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
+                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
+            }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
             }
@@ -264,6 +272,10 @@ class MailChimpClient
             }
             if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
                 throw new MergeFieldException($put['detail']);
+            }
+            if (isset($put['errors']) && strpos($put['errors'][0]['message'], "has signed up to a lot of lists very recently; we're not allowing more signups for now.")
+            ) {
+                throw new MailchimpTooManySubscriptionsException($put['errors'][0]['message']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);
