@@ -10,6 +10,7 @@ use App\Mail\InvalidEmailNotification;
 use App\OAuthClient;
 use App\Revision;
 use App\Synchronizer\Mapper\Mapper;
+use App\SyncLaterRecords;
 use ErrorException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
@@ -781,10 +782,48 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         } catch (\Exception $e) {
         }
         $this->assertTrue($archived);
-        
+    
         // cleanup
         $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
         $this->mcClientTesting->permanentlyDeleteSubscriber($oldEmail);
+    }
+    
+    public function testSyncAllChanges_syncRecordsQueuedToSyncLater(): void
+    {
+        // precondition
+        $revisionId = 1;
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        
+        DB::insert('INSERT INTO sync_later_records (crm_id, config_name, attempts, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+            $member1['id'],
+            self::CONFIG_FILE_NAME,
+            1,
+            date_create_immutable('-3 hours')->format('Y-m-d H:i:s'),
+            date_create_immutable('-3 hours')->format('Y-m-d H:i:s')
+        ]);
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($revisionId, JSON_THROW_ON_ERROR)),
+            new Response(200, [], json_encode([], JSON_THROW_ON_ERROR)),
+            new Response(200, [], json_encode($member1, JSON_THROW_ON_ERROR)),
+            new Response(200, [], json_encode($member1, JSON_THROW_ON_ERROR)),
+            new Response(200, [], json_encode([], JSON_THROW_ON_ERROR)),
+        ]);
+        
+        $this->assertTrue(SyncLaterRecords::hasRecordsQueuedForSync(self::CONFIG_FILE_NAME));
+        
+        $this->sync->syncAllChanges(1, 0);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        
+        $this->assertFalse(SyncLaterRecords::hasRecordsQueuedForSync(self::CONFIG_FILE_NAME));
+        
+        $records = DB::select('SELECT * FROM sync_later_records WHERE config_name = ? AND crm_id = ? AND sync_successful IS NOT NULL', [
+            self::CONFIG_FILE_NAME,
+            $member1['id'],
+        ]);
+        
+        $this->assertCount(1, $records);
     }
     
     

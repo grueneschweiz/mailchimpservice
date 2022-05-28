@@ -8,6 +8,7 @@ use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MailchimpTooManySubscriptionsException;
 use App\Exceptions\MemberDeleteException;
 use App\Exceptions\MergeFieldException;
 use App\Exceptions\UnsubscribedEmailException;
@@ -213,6 +214,7 @@ class MailChimpClient
      * @throws FakeEmailException
      * @throws UnsubscribedEmailException
      * @throws MergeFieldException
+     * @throws MailchimpTooManySubscriptionsException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -270,6 +272,10 @@ class MailChimpClient
             }
             if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
                 throw new MergeFieldException($put['detail']);
+            }
+            if (isset($put['errors']) && strpos($put['errors'][0]['message'], "has signed up to a lot of lists very recently; we're not allowing more signups for now.")
+            ) {
+                throw new MailchimpTooManySubscriptionsException($put['errors'][0]['message']);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);

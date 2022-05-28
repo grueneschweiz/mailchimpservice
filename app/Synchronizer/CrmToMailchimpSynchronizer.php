@@ -10,6 +10,7 @@ use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
 use App\Exceptions\InvalidEmailException;
 use App\Exceptions\MailchimpClientException;
+use App\Exceptions\MailchimpTooManySubscriptionsException;
 use App\Exceptions\MemberDeleteException;
 use App\Exceptions\MergeFieldException;
 use App\Exceptions\UnsubscribedEmailException;
@@ -19,6 +20,7 @@ use App\Mail\InvalidEmailNotification;
 use App\Revision;
 use App\Sync;
 use App\Synchronizer\Mapper\Mapper;
+use App\SyncLaterRecords;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -189,14 +191,21 @@ class CrmToMailchimpSynchronizer
                 exit(1);
             }
     
-            // base case: everything worked well. update revision id
+            // base case: sync completed.
             if (empty($crmData)) {
-                $this->log('debug', 'Everything synced.');
-                $this->closeOpenRevision();
-                $this->unlock();
-                $this->log('debug', 'Sync successful.');
-    
-                return;
+                if (SyncLaterRecords::hasRecordsQueuedForSync($this->configName)) {
+                    // then sync the records queued for sync later
+                    $this->log('debug', 'Sync records marked for sync later.');
+                    $crmData = $this->getRecordsQueuedForSync();
+                } else {
+                    // now, really everything is done
+                    $this->log('debug', 'Everything synced.');
+                    $this->closeOpenRevision();
+                    $this->unlock();
+                    $this->log('debug', 'Sync successful.');
+            
+                    return;
+                }
             }
     
             // sync members to mailchimp
@@ -270,18 +279,6 @@ class CrmToMailchimpSynchronizer
     }
     
     /**
-     * Set the lock file's modified time to now
-     *
-     * @return void
-     */
-    private function updateLock()
-    {
-        if (is_dir($this->lockFile)) {
-            touch($this->lockFile);
-        }
-    }
-    
-    /**
      * Return the id of the latest successful revision
      *
      * @return Revision|null
@@ -331,19 +328,6 @@ class CrmToMailchimpSynchronizer
     }
     
     /**
-     * Mark the open revision as successfully synced
-     */
-    private function closeOpenRevision()
-    {
-        $revision = $this->getOpenRevision();
-        $revision->sync_successful = true;
-        $revision->save();
-        $this->internalRevisionId = null;
-    
-        $this->log('debug', "Closing revision {$revision->revision_id}");
-    }
-    
-    /**
      * Get the revision we're currently working on
      *
      * @return Revision|\Illuminate\Database\Eloquent\Model
@@ -359,6 +343,55 @@ class CrmToMailchimpSynchronizer
     }
     
     /**
+     * Return array with records that were previously marked to be synced later
+     *
+     * See {@see SyncLaterRecords::getRecordsQueuedForSync()} for details on how the
+     * records are selected. As we do only store the crm ids locally, the
+     * record data is retrieved from the crm.
+     *
+     * @return array
+     */
+    private function getRecordsQueuedForSync(): array
+    {
+        $crmData = [];
+        /** @var SyncLaterRecords $record */
+        foreach (SyncLaterRecords::getRecordsQueuedForSync($this->configName) as $record) {
+            $record->touch();
+            $crmId = $record->crm_id;
+            try {
+                $get = $this->crmClient->get("member/$crmId");
+                
+                if (404 === $get->getStatusCode()) {
+                    $this->log('info', "Record was deleted in crm. Marking as done in SyncLater queue.");
+                    $this->markSyncLaterAsDone($crmId);
+                }
+                
+                $crmData[$crmId] = json_decode((string)$get->getBody(), true, 512, JSON_THROW_ON_ERROR);
+                
+            } catch (GuzzleException $e) {
+                $this->log('warning', "Failed to request record $crmId. Skipping. Original error Message: {$e->getMessage()}");
+            } catch (\JsonException $e) {
+                $this->log('warning', "Failed to read record $crmId. Skipping. Original error Message: {$e->getMessage()}");
+            }
+        }
+        
+        return $crmData;
+    }
+    
+    /**
+     * Mark the open revision as successfully synced
+     */
+    private function closeOpenRevision()
+    {
+        $revision = $this->getOpenRevision();
+        $revision->sync_successful = true;
+        $revision->save();
+        $this->internalRevisionId = null;
+        
+        $this->log('debug', "Closing revision {$revision->revision_id}");
+    }
+    
+    /**
      * Remove lock folder.
      */
     public function unlock()
@@ -366,6 +399,72 @@ class CrmToMailchimpSynchronizer
         $lockfile = "{$this->lockRoot}/{$this->configName}.lock";
         if (file_exists($lockfile)) {
             rmdir($lockfile);
+        }
+    }
+    
+    /**
+     * Checks if the given crm entry was already synced for this revision and
+     * this mailchimp instance.
+     *
+     * @param int $crmId
+     * @return bool
+     */
+    private function alreadySynced(int $crmId)
+    {
+        return (bool)Sync::where('crm_id', $crmId)
+            ->where('internal_revision_id', $this->getInternalRevisionId())
+            ->count();
+    }
+    
+    /**
+     * The internal id of the current revision entry in the local db
+     *
+     * @return int
+     */
+    private function getInternalRevisionId()
+    {
+        if (!$this->internalRevisionId) {
+            $this->internalRevisionId = $this->getOpenRevision()->id;
+        }
+        
+        return $this->internalRevisionId;
+    }
+    
+    private function logRecord(string $method, string $email, string $message): void
+    {
+        $email = strtolower(trim($email));
+        $more = "email=\"$email\" num={$this->syncCounter}";
+        $this->log($method, $message, $more);
+    }
+    
+    private function getEmailFromCrmData(?array $crmData): string
+    {
+        if (!$crmData) {
+            return "";
+        }
+        
+        $key = $this->config->getCrmEmailKey();
+        
+        if (!array_key_exists($key, $crmData)) {
+            return "";
+        }
+        
+        if (empty($crmData[$key])) {
+            return "";
+        }
+        
+        return $crmData[$key];
+    }
+    
+    /**
+     * Set the lock file's modified time to now
+     *
+     * @return void
+     */
+    private function updateLock()
+    {
+        if (is_dir($this->lockFile)) {
+            touch($this->lockFile);
         }
     }
     
@@ -505,25 +604,18 @@ class CrmToMailchimpSynchronizer
     }
     
     /**
-     * Inform data owner that he should only add contact in the crm not in mailchimp
+     * Trims and converts the given email to a lowercase string.
      *
-     * @param array $dataOwner
-     * @param array $mcData
+     * @param array $crmData
+     * @return array the $crmData with the normalized email
      */
-    private function notifyAdminInvalidEmail(array $mcData)
+    private function normalizeEmail(array $crmData): array
     {
-        $dataOwner = $this->config->getDataOwner();
-        
-        $mailData = new \stdClass();
-        $mailData->dataOwnerName = $dataOwner['name'];
-        $mailData->contactFirstName = $mcData['merge_fields']['FNAME']; // todo: check if we cant get the field keys dynamically
-        $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
-        $mailData->contactEmail = $mcData['email_address'];
-        $mailData->adminEmail = env('ADMIN_EMAIL');
-        $mailData->configName = $this->configName;
-        
-        Mail::to($dataOwner['email'])
-            ->send(new InvalidEmailNotification($mailData));
+        $emailKey = $this->config->getCrmEmailKey();
+        if (isset($crmData[$emailKey])) {
+            $crmData[$emailKey] = strtolower(trim((string)$crmData[$emailKey]));
+        }
+        return $crmData;
     }
     
     /**
@@ -557,6 +649,7 @@ class CrmToMailchimpSynchronizer
                 $this->mailchimpClient->putSubscriber($mcRecord);
             }
             $this->logRecord('debug', $mcRecord['email_address'], "Record synchronized to mailchimp.");
+            $this->markSyncLaterAsDone($mcRecord['merge_fields']['WEBLINGID']);
         } catch (AlreadyInListException $e) {
             $oldEmail = $email;
             $newEmail = $mcRecord['email_address'];
@@ -592,14 +685,58 @@ class CrmToMailchimpSynchronizer
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
                 $this->logRecord('info', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
-    
+        
                 // archive record with old email
                 $this->mailchimpClient->deleteSubscriber($email);
-    
+        
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
             }
+        } catch (MailchimpTooManySubscriptionsException $e) {
+            $this->logRecord('info', $email, "Blocked by Mailchimp's subscription rate limit. Retrying later.");
+            $this->saveToSyncLater($mcRecord['merge_fields']['WEBLINGID']);
         }
+    }
+    
+    /**
+     * Save the given crm id along with the config name to the database.
+     *
+     * Records stored in this table will be loaded at every sync of the same
+     * config and it will be tried to sync them again.
+     *
+     * @param int $crmId
+     * @return void
+     */
+    private function saveToSyncLater(int $crmId): void
+    {
+        $entry = SyncLaterRecords::where('crm_id', '=', $crmId)
+            ->where('config_name', '=', $this->configName)
+            ->whereNull('sync_successful')
+            ->firstOrNew();
+        $entry->attempts++;
+        $entry->save();
+    }
+    
+    /**
+     * Inform data owner that he should only add contact in the crm not in mailchimp
+     *
+     * @param array $dataOwner
+     * @param array $mcData
+     */
+    private function notifyAdminInvalidEmail(array $mcData)
+    {
+        $dataOwner = $this->config->getDataOwner();
+        
+        $mailData = new \stdClass();
+        $mailData->dataOwnerName = $dataOwner['name'];
+        $mailData->contactFirstName = $mcData['merge_fields']['FNAME']; // todo: check if we cant get the field keys dynamically
+        $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
+        $mailData->contactEmail = $mcData['email_address'];
+        $mailData->adminEmail = env('ADMIN_EMAIL');
+        $mailData->configName = $this->configName;
+        
+        Mail::to($dataOwner['email'])
+            ->send(new InvalidEmailNotification($mailData));
     }
     
     /**
@@ -616,72 +753,16 @@ class CrmToMailchimpSynchronizer
         $sync->save();
     }
     
-    /**
-     * The internal id of the current revision entry in the local db
-     *
-     * @return int
-     */
-    private function getInternalRevisionId()
+    private function markSyncLaterAsDone(int $crmId): void
     {
-        if (!$this->internalRevisionId) {
-            $this->internalRevisionId = $this->getOpenRevision()->id;
-        }
+        $record = SyncLaterRecords::where('crm_id', '=', $crmId)
+            ->where('config_name', '=', $this->configName)
+            ->whereNull('sync_successful')
+            ->first();
         
-        return $this->internalRevisionId;
-    }
-    
-    /**
-     * Checks if the given crm entry was already synced for this revision and
-     * this mailchimp instance.
-     *
-     * @param int $crmId
-     * @return bool
-     */
-    private function alreadySynced(int $crmId)
-    {
-        return (bool)Sync::where('crm_id', $crmId)
-            ->where('internal_revision_id', $this->getInternalRevisionId())
-            ->count();
-    }
-    
-    /**
-     * Trims and converts the given email to a lowercase string.
-     *
-     * @param array $crmData
-     * @return array the $crmData with the normalized email
-     */
-    private function normalizeEmail(array $crmData): array
-    {
-        $emailKey = $this->config->getCrmEmailKey();
-        if (isset($crmData[$emailKey])) {
-            $crmData[$emailKey] = strtolower(trim((string)$crmData[$emailKey]));
+        if ($record) {
+            $record->sync_successful = new Carbon();
+            $record->save();
         }
-        return $crmData;
-    }
-    
-    private function getEmailFromCrmData(?array $crmData): string
-    {
-        if (!$crmData) {
-            return "";
-        }
-    
-        $key = $this->config->getCrmEmailKey();
-    
-        if (!array_key_exists($key, $crmData)) {
-            return "";
-        }
-    
-        if (empty($crmData[$key])) {
-            return "";
-        }
-    
-        return $crmData[$key];
-    }
-    
-    private function logRecord(string $method, string $email, string $message): void
-    {
-        $email = strtolower(trim($email));
-        $more = "email=\"$email\" num={$this->syncCounter}";
-        $this->log($method, $message, $more);
     }
 }
