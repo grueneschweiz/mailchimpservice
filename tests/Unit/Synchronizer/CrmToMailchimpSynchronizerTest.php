@@ -716,11 +716,77 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         } catch (\Exception $e) {
         }
         $this->assertTrue($archived);
+    
+        // cleanup
+        $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($oldEmail);
+    }
+    
+    public function testPutSubscriber__email_changed__new_email_already_in_mailchimp_with_status_of_deleted(): void
+    {
+        $putSubscriber = new \ReflectionMethod($this->sync, 'putSubscriber');
+        
+        $oldEmail = 'old-' . Str::random() . '@mymail.com';
+        $newEmail = 'new-' . Str::random() . '@mymail.com';
+        
+        $oldMcRecord = [
+            'email_address' => $oldEmail,
+            'merge_fields' => [
+                'FNAME' => 'Email Change',
+                'LNAME' => 'Test',
+                'GENDER' => 'f',
+                'NOTES' => 'email not yet changed',
+                'WEBLINGID' => 2354552,
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+                '294df36247' => false,
+                '633e3c8dd7' => false,
+                'bba5d2d564' => false,
+            ],
+            'tags' => [
+                'member',
+                'Deutsch',
+                'ZG',
+            ],
+            'status' => 'subscribed',
+        ];
+        
+        // add subscriber with old email first
+        $putSubscriber->invoke($this->sync, $oldMcRecord, "", false);
+        
+        // then add subscriber with new email as well
+        $newMcRecord = $oldMcRecord;
+        $newMcRecord['email_address'] = $newEmail;
+        $putSubscriber->invoke($this->sync, $newMcRecord, "", false);
+        
+        // then archive the subscriber with the new email
+        $this->mcClientTesting->deleteSubscriber($newEmail);
+        
+        // then test the email change
+        $newMcRecord['merge_fields']['NOTES'] = 'email changed';
+        $putSubscriber->invoke($this->sync, $newMcRecord, $oldEmail, true);
+        
+        // assert new email in mailchimp and subscribed again (so unarchived)
+        $subscriber1 = $this->mcClientTesting->getSubscriber($newEmail);
+        $this->assertEquals(strtolower($newEmail), strtolower($subscriber1['email_address']));
+        $this->assertEquals('subscribed', $subscriber1['status']);
+        
+        // assert old email archived in mailchimp
+        $archived = false;
+        try {
+            $subscriber2 = $this->mcClientTesting->getSubscriber($oldEmail);
+            $archived = $subscriber2['status'] === 'archived';
+        } catch (\Exception $e) {
+        }
+        $this->assertTrue($archived);
         
         // cleanup
         $this->mcClientTesting->permanentlyDeleteSubscriber($newEmail);
         $this->mcClientTesting->permanentlyDeleteSubscriber($oldEmail);
     }
+    
     
     protected function tearDown(): void
     {
