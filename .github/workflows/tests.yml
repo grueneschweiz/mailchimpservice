@@ -1,0 +1,84 @@
+name: Pipeline
+
+on:
+  push:
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: pull docker containers
+        run: docker-compose pull mysql
+
+      - uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
+      - name: build docker container
+        run: docker-compose build
+
+      - name: PHP dependencies
+        run: docker-compose run -u root:root app composer install
+
+      - name: env
+        run: cp .env.ci .env
+
+      - name: laravel key
+        run: docker-compose run -u root:root app php artisan key:generate
+
+      - name: start containers
+        run: docker-compose up -d mysql
+
+      - name: wait for mysql
+        run: |
+          while ! docker exec -t wsmysql_mailchimp sh -c 'mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" -e quit > /dev/null 2>&1'; do
+            sleep 1
+          done
+
+      - name: run migrations
+        run: docker-compose run -u root:root app php artisan migrate
+
+      - name: run tests
+        env:
+          MAILCHIMP_APIKEY: ${{ secrets.MAILCHIMP_APIKEY }}
+        run: >-
+          docker-compose 
+          run 
+          -u root:root
+          -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY}
+          app 
+          php 
+          -dxdebug.mode=coverage 
+          /var/www/html/vendor/phpunit/phpunit/phpunit 
+          --configuration /var/www/html/phpunit.xml 
+          --coverage-clover /var/www/html/build/logs/clover.xml
+
+      - name: Show logs if tests failed
+        if: ${{ failure() }}
+        run: cat storage/logs/laravel-*.log
+
+      - name: publish coverage report
+        if: ${{ success() }}
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          docker-compose 
+          run
+          -u root:root
+          -e GITHUB_REF=${GITHUB_REF} 
+          -e GITHUB_ACTIONS=${GITHUB_ACTIONS} 
+          -e GITHUB_RUN_ID=${GITHUB_RUN_ID} 
+          -e GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME} 
+          -e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} 
+          app
+          sh
+          -c
+          'curl -L https://github.com/php-coveralls/php-coveralls/releases/download/v2.5.2/php-coveralls.phar > /tmp/php-coveralls
+          && chmod u+x /tmp/php-coveralls
+          && /tmp/php-coveralls --coverage_clover=/var/www/html/build/logs/clover.xml -v'
