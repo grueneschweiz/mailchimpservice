@@ -530,13 +530,24 @@ class CrmToMailchimpSynchronizer
         if (null === $crmData) {
             $this->logRecord('debug', '', "Record $crmId was deleted in crm.");
     
-            if ($mcEmail) {
-                $this->mailchimpClient->deleteSubscriber($mcEmail);
-                $this->logRecord('debug', '', "Record $crmId deleted in mailchimp.");
-            } else {
+            if (!$mcEmail) {
                 $this->logRecord('debug', '', "Record $crmId not present in mailchimp.");
+                return;
             }
     
+            $resp = $this->crmClient->post("member/match", ['email1' => ['value' => $mcEmail]]);
+            $matches = json_decode((string)$resp->getBody(), true, 512, JSON_THROW_ON_ERROR);
+    
+            if ('no_match' === $matches['status']) {
+                $this->logRecord('debug', $mcEmail, "No other record with same email in crm.");
+                $this->mailchimpClient->deleteSubscriber($mcEmail);
+                $this->logRecord('debug', $mcEmail, "Record $crmId deleted in mailchimp.");
+                return;
+            }
+    
+            $firstMatch = $matches['matches'][0];
+            $this->logRecord('debug', $mcEmail, "There is at least one record with the same email in the crm (crm id: {$firstMatch['id']}). Syncing this one instead.");
+            $this->syncSingle($firstMatch['id'], $firstMatch);
             return;
         }
     
