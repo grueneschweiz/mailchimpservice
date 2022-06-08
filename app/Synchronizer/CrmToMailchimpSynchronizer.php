@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\ArchivedException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
@@ -696,16 +697,18 @@ class CrmToMailchimpSynchronizer
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
                 $this->logRecord('info', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
-        
+    
                 // archive record with old email
                 $this->mailchimpClient->deleteSubscriber($email);
-        
+    
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
             }
         } catch (MailchimpTooManySubscriptionsException $e) {
             $this->logRecord('info', $email, "Blocked by Mailchimp's subscription rate limit. Retrying later.");
             $this->saveToSyncLater($mcRecord['merge_fields']['WEBLINGID']);
+        } catch (ArchivedException $e) {
+            $this->logRecord('info', $email, 'Record archived and can not be unarchived. At least now.');
         }
     }
     

@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\ArchivedException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
@@ -215,6 +216,7 @@ class MailChimpClient
      * @throws UnsubscribedEmailException
      * @throws MergeFieldException
      * @throws MailchimpTooManySubscriptionsException
+     * @throws ArchivedException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -260,6 +262,10 @@ class MailChimpClient
             ) {
                 $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
                 throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
+            }
+            if (isset($put['errors']) && strpos($put['errors'][0]['message'], 'status is "archived."')
+            ) {
+                throw new ArchivedException($put['errors'][0]['message']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
