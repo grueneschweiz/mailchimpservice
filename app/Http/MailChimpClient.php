@@ -249,7 +249,9 @@ class MailChimpClient
                 throw new CleanedEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".'))) {
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'has previously unsubscribed from this list and must opt in again.'))
+            ) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
