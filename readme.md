@@ -1,6 +1,6 @@
 # Mailchimp Service
 
-[![build status](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/ci.yml/badge.svg)](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/ci.yml)
+[![build status](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/tests.yml/badge.svg)](https://github.com/grueneschweiz/mailchimpservice/actions/workflows/tests.yml)
 [![Coverage Status](https://coveralls.io/repos/github/grueneschweiz/mailchimpservice/badge.svg)](https://coveralls.io/github/grueneschweiz/mailchimpservice)
 
 This project marks the glue between the
