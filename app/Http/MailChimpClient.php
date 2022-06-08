@@ -45,7 +45,7 @@ class MailChimpClient
     /**
      * In memory cache for all subscriber.
      *
-     * Key: crmId, value: email
+     * Key: email, value: crmId
      *
      * @var array
      */
