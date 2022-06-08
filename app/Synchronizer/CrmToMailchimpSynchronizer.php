@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\ArchivedException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
@@ -530,13 +531,24 @@ class CrmToMailchimpSynchronizer
         if (null === $crmData) {
             $this->logRecord('debug', '', "Record $crmId was deleted in crm.");
     
-            if ($mcEmail) {
-                $this->mailchimpClient->deleteSubscriber($mcEmail);
-                $this->logRecord('debug', '', "Record $crmId deleted in mailchimp.");
-            } else {
+            if (!$mcEmail) {
                 $this->logRecord('debug', '', "Record $crmId not present in mailchimp.");
+                return;
             }
     
+            $resp = $this->crmClient->post("member/match", ['email1' => ['value' => $mcEmail]]);
+            $matches = json_decode((string)$resp->getBody(), true, 512, JSON_THROW_ON_ERROR);
+    
+            if ('no_match' === $matches['status']) {
+                $this->logRecord('debug', $mcEmail, "No other record with same email in crm.");
+                $this->mailchimpClient->deleteSubscriber($mcEmail);
+                $this->logRecord('debug', $mcEmail, "Record $crmId deleted in mailchimp.");
+                return;
+            }
+    
+            $firstMatch = $matches['matches'][0];
+            $this->logRecord('debug', $mcEmail, "There is at least one record with the same email in the crm (crm id: {$firstMatch['id']}). Syncing this one instead.");
+            $this->syncSingle($firstMatch['id'], $firstMatch);
             return;
         }
     
@@ -685,16 +697,18 @@ class CrmToMailchimpSynchronizer
         } catch (UnsubscribedEmailException $e) {
             if ($updateEmail) {
                 $this->logRecord('info', $email, "Change of address from {$email} to {$mcRecord['email_address']} rejected, because user is unsubscribed. Archiving {$email} and adding {$mcRecord['email_address']}.");
-        
+    
                 // archive record with old email
                 $this->mailchimpClient->deleteSubscriber($email);
-        
+    
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
             }
         } catch (MailchimpTooManySubscriptionsException $e) {
             $this->logRecord('info', $email, "Blocked by Mailchimp's subscription rate limit. Retrying later.");
             $this->saveToSyncLater($mcRecord['merge_fields']['WEBLINGID']);
+        } catch (ArchivedException $e) {
+            $this->logRecord('info', $email, 'Record archived and can not be unarchived. At least now.');
         }
     }
     

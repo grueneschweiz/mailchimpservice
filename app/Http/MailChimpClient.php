@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use App\Exceptions\AlreadyInListException;
+use App\Exceptions\ArchivedException;
 use App\Exceptions\CleanedEmailException;
 use App\Exceptions\EmailComplianceException;
 use App\Exceptions\FakeEmailException;
@@ -45,7 +46,7 @@ class MailChimpClient
     /**
      * In memory cache for all subscriber.
      *
-     * Key: crmId, value: email
+     * Key: email, value: crmId
      *
      * @var array
      */
@@ -215,6 +216,7 @@ class MailChimpClient
      * @throws UnsubscribedEmailException
      * @throws MergeFieldException
      * @throws MailchimpTooManySubscriptionsException
+     * @throws ArchivedException
      */
     public function putSubscriber(array $mcData, string $email = null, string $id = null)
     {
@@ -241,7 +243,9 @@ class MailChimpClient
     
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address'))
+                || (isset($put['detail']) && strpos($put['detail'], 'provide a valid email address.'))
+            ) {
                 throw new InvalidEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
@@ -249,23 +253,24 @@ class MailChimpClient
                 throw new CleanedEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".'))) {
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'has previously unsubscribed from this list and must opt in again.'))
+            ) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Deleted".'))
-            ) {
-                $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
-                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
-            }
-            if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
-                throw new EmailComplianceException($put['detail']);
-            }
-            if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Deleted".')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Subscribed".'))
             ) {
                 $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
                 throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
+            }
+            if (isset($put['errors']) && strpos($put['errors'][0]['message'], 'status is "archived."')
+            ) {
+                throw new ArchivedException($put['errors'][0]['message']);
+            }
+            if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
+                throw new EmailComplianceException($put['detail']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
