@@ -243,7 +243,9 @@ class MailChimpClient
     
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
-            if (isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address')) {
+            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address'))
+                || (isset($put['detail']) && strpos($put['detail'], 'provide a valid email address.'))
+            ) {
                 throw new InvalidEmailException($put['errors'][0]['message']);
             }
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
@@ -270,10 +272,7 @@ class MailChimpClient
             if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
                 throw new EmailComplianceException($put['detail']);
             }
-            if (isset($put['detail']) && (
-                    strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')
-                    || strpos($put['detail'], 'provide a valid email address.'))
-            ) {
+            if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
                 throw new FakeEmailException($put['detail']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
