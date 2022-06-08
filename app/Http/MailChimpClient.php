@@ -267,7 +267,10 @@ class MailChimpClient
                 $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
                 throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
             }
-            if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
+            if (isset($put['detail']) && (
+                    strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')
+                    || strpos($put['detail'], 'provide a valid email address.'))
+            ) {
                 throw new FakeEmailException($put['detail']);
             }
             if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
