@@ -412,13 +412,73 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $this->mcClientTesting->deleteSubscriber($email);
     }
     
-    public function testSyncAllChanges_delete_fromRevision()
+    public function testSyncAllChanges_delete_fromRevision__noDuplicates()
+    {
+        // precondition
+        $revisionId = 130;
+    
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+    
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($revisionId)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // test
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($revisionId)),
+            new Response(200, [], json_encode([
+                $member1['id'] => null
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'no_match',
+                'matches' => [],
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+    
+        // mock mailchimp subscribers, as mailchimp is too slow in updating
+        // so we don't get the inserted subscribers yes
+        $mcClient = new \ReflectionProperty($this->sync, 'mailchimpClient');
+        $subscribers = new \ReflectionProperty($mcClient->getValue($this->sync), 'subscribers');
+        $subscribers->setValue($mcClient->getValue($this->sync), [
+            $member1['email1'] => $member1['id'],
+        ]);
+    
+        $this->sync->syncAllChanges(1, 0);
+    
+        // assert member1 not in mailchimp
+        $subscriber1 = null;
+        try {
+            $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
+        } catch (\Exception $e) {
+        }
+        $this->assertTrue(
+            is_null($subscriber1)
+            || $subscriber1['status'] === 'archived'
+        );
+    }
+    
+    public function testSyncAllChanges_delete_fromRevision__withDuplicate()
     {
         // precondition
         $revisionId = 130;
         
         $email = Str::random() . '@mymail.com';
         $member1 = $this->getMember($email);
+        
+        $member2 = $member1;
+        $member2['firstName'] = 'duplicate 1';
+        
+        $member3 = $member1;
+        $member3['firstName'] = 'duplicate 2';
         
         $this->mockCrmResponse([
             new Response(200, [], json_encode($revisionId)),
@@ -437,19 +497,38 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => null
             ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [
+                    $member2,
+                    $member3,
+                ],
+            ])),
+            new Response(200, [], json_encode($member3)),
             new Response(200, [], json_encode([])),
+        ]);
+        
+        // mock mailchimp subscribers, as mailchimp is too slow in updating
+        // so we don't get the inserted subscribers yes
+        $mcClient = new \ReflectionProperty($this->sync, 'mailchimpClient');
+        $subscribers = new \ReflectionProperty($mcClient->getValue($this->sync), 'subscribers');
+        $subscribers->setValue($mcClient->getValue($this->sync), [
+            $member1['email1'] => $member1['id'],
         ]);
         
         $this->sync->syncAllChanges(1, 0);
         
-        // assert member1 not in mailchimp
-        $subscriber1 = null;
-        try {
-            $subscriber1 = $this->mcClientTesting->getSubscriber($this->emailMember1);
-        } catch (\Exception $e) {
-        }
-        $this->assertNull($subscriber1);
+        // assert member3 in mailchimp
+        $subscriber = $this->mcClientTesting->getSubscriber($member3['email1']);
+        
+        $this->assertEquals($member3['firstName'], $subscriber['merge_fields']['FNAME']);
+        $this->assertEquals($member3['id'], $subscriber['merge_fields']['WEBLINGID']);
+        $this->assertEquals(strtolower($member3['email1']), strtolower($subscriber['email_address']));
+        
+        // cleanup
+        $this->mcClientTesting->deleteSubscriber($member3['email1']);
     }
+    
     
     public function testSyncAllChanges_update_twice_fromRevision()
     {
