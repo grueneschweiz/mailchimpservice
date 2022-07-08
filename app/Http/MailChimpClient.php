@@ -246,7 +246,14 @@ class MailChimpClient
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address'))
                 || (isset($put['detail']) && strpos($put['detail'], 'provide a valid email address.'))
             ) {
-                throw new InvalidEmailException($put['errors'][0]['message']);
+                if (isset($put['errors']) && !empty($put['errors'][0]['message'])) {
+                    $msg = $put['errors'][0]['message'];
+                } elseif (!empty($put['detail'])) {
+                    $msg = $put['detail'];
+                } else {
+                    $msg = print_r($put, true);
+                }
+                throw new InvalidEmailException($msg);
             }
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Cleaned".'))) {
