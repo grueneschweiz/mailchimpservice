@@ -11,6 +11,7 @@ use App\Synchronizer\Mapper\FieldMaps\FieldMapEmail;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapMerge;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapTag;
+use App\Synchronizer\Mapper\FieldMaps\FieldMapToken;
 
 class FieldMapFacade
 {
@@ -19,6 +20,7 @@ class FieldMapFacade
     const TYPE_GROUP = 'group';
     const TYPE_TAG = 'tag';
     const TYPE_AUTOTAG = 'autotag';
+    const TYPE_TOKEN = 'token';
     
     private $field;
     
@@ -48,6 +50,9 @@ class FieldMapFacade
                 break;
             case self::TYPE_EMAIL:
                 $this->field = new FieldMapEmail($config);
+                break;
+            case self::TYPE_TOKEN:
+                $this->field = new FieldMapToken($config);
                 break;
             default:
                 throw new ConfigException('Field: Unknown type');

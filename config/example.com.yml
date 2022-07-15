@@ -99,3 +99,9 @@ fields:
     mailchimpKey: WEBLINGID
     type: merge
     sync: toMailchimp
+  - crmKey: email1
+    mailchimpKey: TOKEN
+    type: token
+    valid: '2022-12-31'
+    secret: wPBYKufboAUD9hXx56I8w8R623qntpbq # replace me with a real secret
+    sync: toMailchimp
