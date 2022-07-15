@@ -90,7 +90,7 @@ class FieldMapToken extends FieldMap
         }
         
         $validUntilDate = $this->validUntil->format('Y-m-d');
-        $email = $data[$this->crmKey];
+        $email = strtolower(trim($data[$this->crmKey]));
         $secret = $this->secret;
         
         $this->value = hash_hmac('sha256', $email . $validUntilDate, $secret);
