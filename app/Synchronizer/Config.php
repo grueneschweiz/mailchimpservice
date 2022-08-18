@@ -19,6 +19,7 @@ class Config
     private $mailchimp;
     private $errors;
     private $crmEmailKey;
+    private $webling;
     
     /**
      * Config constructor.
@@ -73,11 +74,15 @@ class Config
         } else {
             throw new ConfigException("Missing 'mailchimp' section.");
         }
-        
+    
         if ($config['fields']) {
             $this->fields = $config['fields'];
         } else {
             throw new ConfigException("Missing 'fields' section.");
+        }
+    
+        if (isset($config['webling'])) {
+            $this->webling = $config['webling'];
         }
     }
     
@@ -229,12 +234,22 @@ class Config
         foreach ($this->getFieldMaps() as $map) {
             if ($map->isEmail()) {
                 $this->crmEmailKey = $map->getCrmKey();
-                
+        
                 return $this->crmEmailKey;
             }
         }
-        
+    
         throw new ConfigException('Missing email field.');
+    }
+    
+    /**
+     * Return array of the Webling group ids of the prioritized groups
+     *
+     * @return int[]
+     */
+    public function getPrioritizedGroups(): array
+    {
+        return $this->webling['prioritizedGroups'] ?? [];
     }
     
     /**
