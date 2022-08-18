@@ -1,4 +1,7 @@
-<?php /** @noinspection PhpUnhandledExceptionInspection */
+<?php
+/** @noinspection JsonEncodingApiUsageInspection */
+
+/** @noinspection PhpUnhandledExceptionInspection */
 
 namespace App\Synchronizer;
 
@@ -117,11 +120,19 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([
                 $member2['id'] => $member2
             ])),
-            new Response(200, [], json_encode($member2)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member2],
+                'ratings' => [$member2['id'] => 0]
+            ])),
             new Response(200, [], json_encode([
                 3 => null
             ])),
@@ -206,11 +217,19 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([
                 $member2['id'] => $member2
             ])),
-            new Response(200, [], json_encode($member2)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member2],
+                'ratings' => [$member2['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -242,7 +261,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -260,7 +283,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 1 => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -286,7 +313,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -331,7 +362,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -349,7 +384,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 1]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -379,7 +418,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -399,7 +442,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -425,7 +472,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -485,7 +536,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -504,7 +559,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
                     $member3,
                 ],
             ])),
-            new Response(200, [], json_encode($member3)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member2],
+                'ratings' => [$member2['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -515,18 +574,18 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $subscribers->setValue($mcClient->getValue($this->sync), [
             $member1['email1'] => $member1['id'],
         ]);
-        
+    
         $this->sync->syncAllChanges(1, 0);
-        
+    
         // assert member3 in mailchimp
         $subscriber = $this->mcClientTesting->getSubscriber($member3['email1']);
-        
-        $this->assertEquals($member3['firstName'], $subscriber['merge_fields']['FNAME']);
-        $this->assertEquals($member3['id'], $subscriber['merge_fields']['WEBLINGID']);
-        $this->assertEquals(strtolower($member3['email1']), strtolower($subscriber['email_address']));
-        
+    
+        $this->assertEquals($member2['firstName'], $subscriber['merge_fields']['FNAME']);
+        $this->assertEquals($member2['id'], $subscriber['merge_fields']['WEBLINGID']);
+        $this->assertEquals(strtolower($member2['email1']), strtolower($subscriber['email_address']));
+    
         // cleanup
-        $this->mcClientTesting->deleteSubscriber($member3['email1']);
+        $this->mcClientTesting->deleteSubscriber($member2['email1']);
     }
     
     
@@ -541,7 +600,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -614,7 +677,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -659,7 +726,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode([
                 $member1['id'] => $member1
             ])),
-            new Response(200, [], json_encode($member1)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
             new Response(200, [], json_encode([])),
         ]);
         
@@ -886,7 +957,11 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             new Response(200, [], json_encode($revisionId, JSON_THROW_ON_ERROR)),
             new Response(200, [], json_encode([], JSON_THROW_ON_ERROR)),
             new Response(200, [], json_encode($member1, JSON_THROW_ON_ERROR)),
-            new Response(200, [], json_encode($member1, JSON_THROW_ON_ERROR)),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ], JSON_THROW_ON_ERROR)),
             new Response(200, [], json_encode([], JSON_THROW_ON_ERROR)),
         ]);
         
