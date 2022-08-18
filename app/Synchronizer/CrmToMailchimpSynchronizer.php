@@ -204,7 +204,7 @@ class CrmToMailchimpSynchronizer
                     $this->closeOpenRevision();
                     $this->unlock();
                     $this->log('debug', 'Sync successful.');
-            
+    
                     return;
                 }
             }
@@ -368,15 +368,28 @@ class CrmToMailchimpSynchronizer
                 }
                 
                 $crmData[$crmId] = json_decode((string)$get->getBody(), true, 512, JSON_THROW_ON_ERROR);
-                
+    
             } catch (GuzzleException $e) {
                 $this->log('warning', "Failed to request record $crmId. Skipping. Original error Message: {$e->getMessage()}");
             } catch (\JsonException $e) {
                 $this->log('warning', "Failed to read record $crmId. Skipping. Original error Message: {$e->getMessage()}");
             }
         }
-        
+    
         return $crmData;
+    }
+    
+    private function markSyncLaterAsDone(int $crmId): void
+    {
+        $record = SyncLaterRecords::where('crm_id', '=', $crmId)
+            ->where('config_name', '=', $this->configName)
+            ->whereNull('sync_successful')
+            ->first();
+        
+        if ($record) {
+            $record->sync_successful = new Carbon();
+            $record->save();
+        }
     }
     
     /**
@@ -557,7 +570,7 @@ class CrmToMailchimpSynchronizer
         // skip if record has no email address and isn't in mailchimp yet
         if (!$mcEmail && empty($crmData[$emailKey])) {
             $this->logRecord('debug', '', "Record $crmId skipped (not in mailchimp and has no email address).");
-    
+        
             return;
         }
     
@@ -572,7 +585,7 @@ class CrmToMailchimpSynchronizer
         } else {
             $this->logRecord('debug', $this->getEmailFromCrmData($main), "This record seems to be the main record.");
         }
-        
+    
         // remove all subscribers that unsubscribed via crm
         if (!$this->filter->filterSingle($main)) {
             if ($email) {
@@ -765,18 +778,5 @@ class CrmToMailchimpSynchronizer
         $sync->crm_id = $crmId;
         $sync->internal_revision_id = $this->getInternalRevisionId();
         $sync->save();
-    }
-    
-    private function markSyncLaterAsDone(int $crmId): void
-    {
-        $record = SyncLaterRecords::where('crm_id', '=', $crmId)
-            ->where('config_name', '=', $this->configName)
-            ->whereNull('sync_successful')
-            ->first();
-        
-        if ($record) {
-            $record->sync_successful = new Carbon();
-            $record->save();
-        }
     }
 }
