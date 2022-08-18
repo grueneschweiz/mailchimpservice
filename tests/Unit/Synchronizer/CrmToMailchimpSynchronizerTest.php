@@ -972,17 +972,283 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         
         $this->sync->syncAllChanges(1, 0);
         $this->mcClientTesting->permanentlyDeleteSubscriber($email);
-        
+    
         $this->assertFalse(SyncLaterRecords::hasRecordsQueuedForSync(self::CONFIG_FILE_NAME));
-        
+    
         $records = DB::select('SELECT * FROM sync_later_records WHERE config_name = ? AND crm_id = ? AND sync_successful IS NOT NULL', [
             self::CONFIG_FILE_NAME,
             $member1['id'],
         ]);
-        
+    
         $this->assertCount(1, $records);
     }
     
+    public function testSyncAllChanges_getRelevantRecord_noDuplicates(): void
+    {
+        $member1 = $this->getMember(Str::random() . '@mymail.com');
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member1 in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($member1['email1']);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($member1['email1']);
+        $this->assertEquals(strtolower($member1['email1']), $subscriber1['email_address']);
+    }
+    
+    public function testSyncAllChanges_getRelevantRecord_topRated(): void
+    {
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        $member2 = $this->getMember($email);
+        $member3 = $this->getMember('');
+        
+        $member1['notesCountry'] = 'member1';
+        $member2['notesCountry'] = 'member2';
+        $member3['notesCountry'] = 'member3';
+        
+        $member1['memberStatusCountry'] = null;
+        $member2['memberStatusCountry'] = 'sympathiser';
+        $member3['memberStatusCountry'] = 'member';
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [$member1, $member2, $member3],
+                'ratings' => [
+                    $member1['id'] => 0,
+                    $member2['id'] => 1,
+                    $member3['id'] => 6
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member2 in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($email);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        $this->assertEquals($member2['notesCountry'], $subscriber1['merge_fields']['NOTES']);
+    }
+    
+    public function testSyncAllChanges_getRelevantRecord_topRated_prioritizedGroup_single(): void
+    {
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        $member2 = $this->getMember($email);
+        $member3 = $this->getMember('');
+        $member4 = $this->getMember($email);
+        
+        $member1['notesCountry'] = 'member1';
+        $member2['notesCountry'] = 'member2';
+        $member3['notesCountry'] = 'member3';
+        $member4['notesCountry'] = 'member4';
+        
+        $member1['memberStatusCountry'] = null;
+        $member2['memberStatusCountry'] = 'sympathiser';
+        $member3['memberStatusCountry'] = 'member';
+        $member4['memberStatusCountry'] = 'sympathiser';
+        
+        $member2['groups'] = [201, 7654321];
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [$member1, $member2, $member3, $member4],
+                'ratings' => [
+                    $member1['id'] => 0,
+                    $member2['id'] => 1,
+                    $member3['id'] => 6,
+                    $member4['id'] => 1,
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member2 in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($email);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        $this->assertEquals($member2['notesCountry'], $subscriber1['merge_fields']['NOTES']);
+    }
+    
+    public function testSyncAllChanges_getRelevantRecord_topRated_prioritizedGroup_multiple(): void
+    {
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        $member2 = $this->getMember($email);
+        $member3 = $this->getMember('');
+        $member4 = $this->getMember($email);
+        
+        $member1['notesCountry'] = 'member1';
+        $member2['notesCountry'] = 'member2';
+        $member3['notesCountry'] = 'member3';
+        $member4['notesCountry'] = 'member4';
+        
+        $member1['memberStatusCountry'] = null;
+        $member2['memberStatusCountry'] = 'sympathiser';
+        $member3['memberStatusCountry'] = 'member';
+        $member4['memberStatusCountry'] = 'sympathiser';
+        
+        $member2['groups'] = [201, 7654321];
+        $member4['groups'] = [201, 1234567];
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [$member1, $member2, $member3, $member4],
+                'ratings' => [
+                    $member1['id'] => 0,
+                    $member2['id'] => 1,
+                    $member3['id'] => 6,
+                    $member4['id'] => 1,
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member with lower id in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($email);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        $lowerIdMember = (int)$member2['id'] < (int)$member4['id'] ? $member2 : $member4;
+        $this->assertEquals($lowerIdMember['notesCountry'], $subscriber1['merge_fields']['NOTES']);
+    }
+    
+    public function testSyncAllChanges_getRelevantRecord_topRated_alreadyInMailchimp(): void
+    {
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        $member2 = $this->getMember($email);
+        $member3 = $this->getMember('');
+        $member4 = $this->getMember($email);
+        
+        $member1['notesCountry'] = 'member1';
+        $member2['notesCountry'] = 'member2';
+        $member3['notesCountry'] = 'member3';
+        $member4['notesCountry'] = 'member4';
+        
+        $member1['memberStatusCountry'] = null;
+        $member2['memberStatusCountry'] = 'sympathiser';
+        $member3['memberStatusCountry'] = 'member';
+        $member4['memberStatusCountry'] = 'sympathiser';
+        
+        // precondition
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member2['id'] => $member2
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member2],
+                'ratings' => [
+                    $member2['id'] => 1,
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // test
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [$member1, $member2, $member3, $member4],
+                'ratings' => [
+                    $member1['id'] => 0,
+                    $member2['id'] => 1,
+                    $member3['id'] => 6,
+                    $member4['id'] => 1,
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member2 in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($email);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        $this->assertEquals($member2['notesCountry'], $subscriber1['merge_fields']['NOTES']);
+    }
+    
+    public function testSyncAllChanges_getRelevantRecord_topRated_lowerId(): void
+    {
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+        $member2 = $this->getMember($email);
+        $member3 = $this->getMember('');
+        $member4 = $this->getMember($email);
+        
+        $member1['notesCountry'] = 'member1';
+        $member2['notesCountry'] = 'member2';
+        $member3['notesCountry'] = 'member3';
+        $member4['notesCountry'] = 'member4';
+        
+        $member1['memberStatusCountry'] = null;
+        $member2['memberStatusCountry'] = 'sympathiser';
+        $member3['memberStatusCountry'] = 'member';
+        $member4['memberStatusCountry'] = 'sympathiser';
+        
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode(123)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'multiple',
+                'matches' => [$member1, $member2, $member3, $member4],
+                'ratings' => [
+                    $member1['id'] => 0,
+                    $member2['id'] => 1,
+                    $member3['id'] => 6,
+                    $member4['id'] => 1,
+                ]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+        
+        $this->sync->syncAllChanges(1, 0);
+        
+        // assert member with lower id in mailchimp
+        $subscriber1 = $this->mcClientTesting->getSubscriber($email);
+        $this->mcClientTesting->permanentlyDeleteSubscriber($email);
+        $lowerIdMember = (int)$member2['id'] < (int)$member4['id'] ? $member2 : $member4;
+        $this->assertEquals($lowerIdMember['notesCountry'], $subscriber1['merge_fields']['NOTES']);
+    }
     
     protected function tearDown(): void
     {
