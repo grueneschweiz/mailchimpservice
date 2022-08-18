@@ -178,7 +178,10 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             'interests' => ['climate', 'energy'],
             'donorCountry' => 'sponsor',
             'notesCountry' => 'Go to hell',
-            'group' => 'BE',
+            'firstLevelGroupNames' => 'BE',
+            'groups' => [
+                201
+            ],
             'recordCategory' => 'media',
             'id' => (string)random_int(1, 2147483647),
         ];

@@ -91,7 +91,7 @@ fields:
     mailchimpKey: NOTES
     type: merge
     sync: toMailchimp
-  - crmKey: group
+  - crmKey: firstLevelGroupNames
     type: autotag
     sync: toMailchimp
   - crmKey: recordCategory

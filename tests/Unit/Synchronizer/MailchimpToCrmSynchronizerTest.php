@@ -280,7 +280,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             'interests' => ['climate', 'energy'],
             'donorCountry' => 'sponsor',
             'notesCountry' => 'Go to hell',
-            'group' => 'BE',
+            'firstLevelGroupNames' => 'BE',
             'recordCategory' => 'media',
             'id' => (string)$crmId,
         ];
