@@ -91,4 +91,9 @@ class ConfigTest extends TestCase
         $config = new Config('test_invalid.io.yml');
         $this->assertCount(5, $config->getErrors());
     }
+    
+    public function testGetPrioritizedGroups(): void
+    {
+        $this->assertEqualsCanonicalizing([1234567, 7654321], $this->config->getPrioritizedGroups());
+    }
 }

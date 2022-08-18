@@ -204,7 +204,7 @@ class CrmToMailchimpSynchronizer
                     $this->closeOpenRevision();
                     $this->unlock();
                     $this->log('debug', 'Sync successful.');
-            
+    
                     return;
                 }
             }
@@ -368,15 +368,28 @@ class CrmToMailchimpSynchronizer
                 }
                 
                 $crmData[$crmId] = json_decode((string)$get->getBody(), true, 512, JSON_THROW_ON_ERROR);
-                
+    
             } catch (GuzzleException $e) {
                 $this->log('warning', "Failed to request record $crmId. Skipping. Original error Message: {$e->getMessage()}");
             } catch (\JsonException $e) {
                 $this->log('warning', "Failed to read record $crmId. Skipping. Original error Message: {$e->getMessage()}");
             }
         }
-        
+    
         return $crmData;
+    }
+    
+    private function markSyncLaterAsDone(int $crmId): void
+    {
+        $record = SyncLaterRecords::where('crm_id', '=', $crmId)
+            ->where('config_name', '=', $this->configName)
+            ->whereNull('sync_successful')
+            ->first();
+        
+        if ($record) {
+            $record->sync_successful = new Carbon();
+            $record->save();
+        }
     }
     
     /**
@@ -557,22 +570,22 @@ class CrmToMailchimpSynchronizer
         // skip if record has no email address and isn't in mailchimp yet
         if (!$mcEmail && empty($crmData[$emailKey])) {
             $this->logRecord('debug', '', "Record $crmId skipped (not in mailchimp and has no email address).");
-    
+        
             return;
         }
     
-        // get the master record
-        $get = $this->crmClient->get("member/$crmId/main");
-        $main = json_decode((string)$get->getBody(), true);
+        // get the relevant record
+        $main = $this->getRelevantRecord($crmData);
         $main = $this->normalizeEmail($main);
         $mainId = $main[Config::getCrmIdKey()];
         $email = $this->mailchimpClient->getSubscriberEmailByCrmId((string)$mainId, $mcCrmIdFieldKey);
+        /** @noinspection TypeUnsafeComparisonInspection */
         if ($crmId != $mainId) { // type coercion wanted
             $this->logRecord('debug', $this->getEmailFromCrmData($crmData), "Found main record $mainId. Email of main record {$this->getEmailFromCrmData($main)}.");
         } else {
             $this->logRecord('debug', $this->getEmailFromCrmData($main), "This record seems to be the main record.");
         }
-        
+    
         // remove all subscribers that unsubscribed via crm
         if (!$this->filter->filterSingle($main)) {
             if ($email) {
@@ -628,6 +641,145 @@ class CrmToMailchimpSynchronizer
             $crmData[$emailKey] = strtolower(trim((string)$crmData[$emailKey]));
         }
         return $crmData;
+    }
+    
+    /**
+     * Return the relevant record that corresponds to the given one
+     *
+     * If there are no duplicates in the crm, the given record is returned. Else
+     * the process runs through the following steps until only one single record
+     * is left, which is then returned:
+     * 1. only take the records with the highest rating
+     * 2. if any records are in prioritized groups, only take those records
+     * 3. if any of the records are already in mailchimp, take those
+     * 4. take the one with the lowest id
+     *
+     * Most records should not have any duplicates at all. Most of those with
+     * duplicates differ by the rating, especially members and sympathizers.
+     * The records left after step 1 are primarily institutional contacts like
+     * organizations and media. They should most probably be handled by
+     * prioritized groups. Steps 3 and 4 should only be the last lifeline and
+     * be used very rarely.
+     *
+     * @link https://github.com/grueneschweiz/mailchimpservice/issues/52
+     *
+     * @param array $crmData a record as served by the crm
+     * @return array a record as served by the crm
+     * @throws GuzzleException
+     * @throws \App\Exceptions\ConfigException
+     * @throws \JsonException
+     */
+    private function getRelevantRecord(array $crmData): array
+    {
+        $matchData = $crmData;
+        unset($matchData[Config::getCrmIdKey()]);
+        $matchResp = $this->crmClient->post("member/match", $crmData);
+        $matches = json_decode((string)$matchResp->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        
+        // if there are no duplicates
+        if (1 >= count($matches['matches'])) {
+            return $crmData;
+        }
+        
+        // remove matches without valid email address
+        foreach ($matches['matches'] as $idx => $match) {
+            $id = $match[Config::getCrmIdKey()];
+            $email = $match[$this->config->getCrmEmailKey()] ?? null;
+            if (false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                unset($matches['matches'][$idx], $matches['ratings'][(int)$id]);
+            }
+        }
+        
+        // if there is a clear winner in terms of membership rating
+        // use this record
+        $topRatedMatches = $this->extractTopRated($matches);
+        if (1 === count($topRatedMatches)) {
+            return $topRatedMatches[0];
+        }
+        
+        // if we've got a prioritized group and no top-rated winner
+        // use the top-rated records in the prioritized groups.
+        $prioritizedGroups = $this->config->getPrioritizedGroups();
+        if (!empty($prioritizedGroups)) {
+            $prioritizedMatches = array_filter(
+                $topRatedMatches,
+                static fn($match) => 1 <= count(array_intersect($prioritizedGroups, $match['groups']))
+            );
+            
+            // if only one single top-rated record is in a prioritized group
+            // use this one
+            if (1 === count($prioritizedMatches)) {
+                return array_values($prioritizedMatches)[0];
+            }
+            
+            // if none of the top-rated records are in prioritized groups
+            // proceed with all top-rated records
+            if (empty($prioritizedMatches)) {
+                $prioritizedMatches = $topRatedMatches;
+            }
+        } else {
+            $prioritizedMatches = $topRatedMatches;
+        }
+        
+        // if we can't find a clear winner using the rating and the prioritized
+        // groups, check if one of the records is already in mailchimp and use
+        // this one.
+        $email = array_values($prioritizedMatches)[0][$this->config->getCrmEmailKey()];
+        try {
+            $subscriber = $this->mailchimpClient->getSubscriber($email);
+            $crmId = $subscriber['merge_fields'][$this->config->getMailchimpKeyOfCrmId()];
+        } catch (MailchimpClientException $e) {
+            $crmId = null;
+        }
+        if ($crmId) {
+            $alreadyInMailchimp = array_filter(
+                $prioritizedMatches,
+                static fn($match) => $match[Config::getCrmIdKey()] === $crmId
+            );
+            
+            // if the one of the top-rated prioritized records is already in
+            // mailchimp use this one
+            if (1 === count($alreadyInMailchimp)) {
+                return array_values($alreadyInMailchimp)[0];
+            }
+        }
+        
+        // if there wasn't a clear winner so far, use the top-rated prioritized
+        // record with the lowest webling id
+        usort(
+            $prioritizedMatches,
+            static fn($a, $b) => $a[Config::getCrmIdKey()] <=> $b[Config::getCrmIdKey()]
+        );
+        return $prioritizedMatches[0];
+    }
+    
+    /**
+     * Returns array with the crm data of the top-rated matches only
+     *
+     * @param array $matches
+     * @return array
+     */
+    private function extractTopRated(array $matches): array
+    {
+        arsort($matches['ratings'], SORT_NUMERIC);
+        $maxRating = array_values($matches['ratings'])[0];
+        $topRated = array_filter(
+            $matches['ratings'],
+            static fn($rating) => $rating >= $maxRating
+        );
+        
+        $topRatedMatches = [];
+        foreach ($topRated as $idOfTopRated => $rating) {
+            foreach ($matches['matches'] as $match) {
+                /** @noinspection TypeUnsafeComparisonInspection */
+                if ($match['id'] == $idOfTopRated) {
+                    $topRatedMatches[] = $match;
+                    break;
+                }
+            }
+        }
+        
+        return $topRatedMatches;
     }
     
     /**
@@ -765,18 +917,5 @@ class CrmToMailchimpSynchronizer
         $sync->crm_id = $crmId;
         $sync->internal_revision_id = $this->getInternalRevisionId();
         $sync->save();
-    }
-    
-    private function markSyncLaterAsDone(int $crmId): void
-    {
-        $record = SyncLaterRecords::where('crm_id', '=', $crmId)
-            ->where('config_name', '=', $this->configName)
-            ->whereNull('sync_successful')
-            ->first();
-        
-        if ($record) {
-            $record->sync_successful = new Carbon();
-            $record->save();
-        }
     }
 }

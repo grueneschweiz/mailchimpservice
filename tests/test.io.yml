@@ -15,6 +15,11 @@ mailchimp:
   interesstCategoriesId: de75614d35
   syncAll: false
 
+webling:
+  prioritizedGroups:
+    - 1234567
+    - 7654321
+
 fields:
   - crmKey: email1
     type: email
@@ -86,7 +91,7 @@ fields:
     mailchimpKey: NOTES
     type: merge
     sync: toMailchimp
-  - crmKey: group
+  - crmKey: firstLevelGroupNames
     type: autotag
     sync: toMailchimp
   - crmKey: recordCategory

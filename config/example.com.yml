@@ -15,6 +15,10 @@ mailchimp:
   interesstCategoriesId: de75614d35
   syncAll: false
 
+webling:
+  prioritizedGroups:
+    - 7654321
+
 fields:
   - crmKey: email1
     type: email
@@ -90,7 +94,7 @@ fields:
     type: autotag
     sync: toMailchimp
   - crmKey: recordCategory
-    mailchimpTagName: journalist
+    mailchimpTagName: media
     type: tag
     conditions:
       - media
