@@ -673,14 +673,14 @@ class CrmToMailchimpSynchronizer
     {
         $matchData = $crmData;
         unset($matchData[Config::getCrmIdKey()]);
-        $matchResp = $this->crmClient->post("member/match", $crmData);
+        $matchResp = $this->crmClient->post("member/match", $matchData);
         $matches = json_decode((string)$matchResp->getBody(), true, 512, JSON_THROW_ON_ERROR);
-        
+    
         // if there are no duplicates
         if (1 >= count($matches['matches'])) {
             return $crmData;
         }
-        
+    
         // remove matches without valid email address
         foreach ($matches['matches'] as $idx => $match) {
             $id = $match[Config::getCrmIdKey()];
