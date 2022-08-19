@@ -671,8 +671,7 @@ class CrmToMailchimpSynchronizer
      */
     private function getRelevantRecord(array $crmData): array
     {
-        $matchData = $crmData;
-        unset($matchData[Config::getCrmIdKey()]);
+        unset($crmData[Config::getCrmIdKey()]);
         $matchResp = $this->crmClient->post("member/match", $crmData);
         $matches = json_decode((string)$matchResp->getBody(), true, 512, JSON_THROW_ON_ERROR);
         
