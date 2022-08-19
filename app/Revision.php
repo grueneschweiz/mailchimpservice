@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int $revision_id
  * @property string $config_name
  * @property bool $sync_successful
+ * @property bool $full_sync
  * @property Carbon $updated_at
  * @property Carbon $created_at
  * @package App

@@ -146,31 +146,42 @@ class CrmToMailchimpSynchronizer
         }
     
         // get revision id of last successful sync (or -1 if no successful revision in the last X days)
-        $revision = $this->getLatestSuccessfullSyncRevision();
+        $latestSuccessfulSyncRevision = $this->getLatestSuccessfullSyncRevision();
         $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
-        if (!$revision) {
+        if (!$latestSuccessfulSyncRevision) {
             $revId = -1;
-            $log = 'No successful revision found. Doing full sync.';
-        } elseif ($revision->created_at < $max_revision_age) {
+            $log = 'No successful revision found.';
+        } elseif ($latestSuccessfulSyncRevision->created_at < $max_revision_age) {
             $revId = -1;
-            $log = "Last successful revision started {$revision->created_at->diffForHumans()}. Doing full sync.";
+            $log = "Last successful revision started {$latestSuccessfulSyncRevision->created_at->diffForHumans()}.";
         } else {
-            $revId = $revision->revision_id;
-            $log = "Last successful sync started {$revision->created_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
+            $revId = $latestSuccessfulSyncRevision->revision_id;
+            $log = "Last successful sync started {$latestSuccessfulSyncRevision->created_at->diffForHumans()} revision id: $revId.";
         }
     
         // sync all records instead of changes if all flag is set
         if ($all) {
             $revId = -1;
-            $log = 'Force sync all records regardless of changes. Doing full sync.';
+            $log = 'Force sync all records regardless of changes.';
         }
     
         if (0 === $offset) {
-            $this->log('info', 'Starting to sync all changes from crm into mailchimp.');
+            $this->log('info', 'Starting to sync from crm into mailchimp.');
+    
+            // get latest revision id from webling and store it in the local database
+            $currentRevision = $this->openNewRevision(-1 === $revId);
+    
+            if (-1 === $revId) {
+                $log .= ' Doing full sync.';
+            } elseif ($currentRevision->full_sync) {
+                // resumption of full sync
+                $revId = -1;
+                $log = 'Resuming full sync.';
+            } else {
+                $log .= ' Synchronizing changes only.';
+            }
+    
             $this->log('info', $log);
-        
-            // get latest revision id and store it in the local database
-            $this->openNewRevision();
         }
         
         while (true) {
@@ -301,15 +312,15 @@ class CrmToMailchimpSynchronizer
      *
      * @throws GuzzleException
      */
-    private function openNewRevision()
+    private function openNewRevision(bool $all): Revision
     {
         // try to resume
         try {
             $latestRev = $this->getOpenRevision();
-    
+            
             $this->log('info', "Resuming revision {$latestRev->revision_id}");
-    
-            return;
+            
+            return $latestRev;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // we don't have an open revision so there is nothing to resume
         }
@@ -317,15 +328,18 @@ class CrmToMailchimpSynchronizer
         // get current revision id from crm
         $get = $this->crmClient->get('revision');
         $latestRevId = (int)json_decode((string)$get->getBody());
-    
+        
         // add current revision
         $latestRev = new Revision();
         $latestRev->config_name = $this->configName;
         $latestRev->revision_id = $latestRevId;
         $latestRev->sync_successful = false;
+        $latestRev->full_sync = $all;
         $latestRev->save();
-    
+        
         $this->log('debug', "Opening revision {$latestRev->revision_id}");
+        
+        return $latestRev;
     }
     
     /**
