@@ -262,7 +262,8 @@ class MailChimpClient
             if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".')) ||
                 (isset($put['errors']) && strpos($put['errors'][0]['message'], 'has previously unsubscribed from this list and must opt in again.')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], "was previously removed from this audience. To rejoin, they'll need to sign up using a Mailchimp form."))
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], "was previously removed from this audience. To rejoin, they'll need to sign up using a Mailchimp form.")) ||
+                (isset($put['errors']) && strpos($put['errors'][0]['message'], "was permanently deleted and cannot be re-imported. The contact must re-subscribe to get back on the list."))
             ) {
                 throw new UnsubscribedEmailException($put['errors'][0]['message']);
             }
