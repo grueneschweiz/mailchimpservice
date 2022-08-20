@@ -657,17 +657,19 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $oldSuccessfulRevId = 10;
         $oldFailedRevId = 11;
         
-        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, full_sync, created_at, updated_at) values (?, ?, ?, ?, ?, ?)', [
             $oldSuccessfulRevId,
             self::CONFIG_FILE_NAME,
             true,
+            false,
             date_create_immutable('-30 days')->format('Y-m-d H:i:s'),
             date_create_immutable('-30 days')->format('Y-m-d H:i:s')
         ]);
-        
-        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+    
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, full_sync, created_at, updated_at) values (?, ?, ?, ?, ?, ?)', [
             $oldFailedRevId,
             self::CONFIG_FILE_NAME,
+            false,
             false,
             date_create_immutable('-3 seconds')->format('Y-m-d H:i:s'),
             date_create_immutable('-3 seconds')->format('Y-m-d H:i:s')
@@ -712,11 +714,12 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         // precondition
         $oldSuccessfulRevision = 20;
         $newRevisionId = 21;
-        
-        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, created_at, updated_at) values (?, ?, ?, ?, ?)', [
+    
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, full_sync, created_at, updated_at) values (?, ?, ?, ?, ?, ?)', [
             $oldSuccessfulRevision,
             self::CONFIG_FILE_NAME,
             true,
+            false,
             date_create_immutable('-3 seconds')->format('Y-m-d H:i:s'),
             date_create_immutable('-3 seconds')->format('Y-m-d H:i:s')
         ]);
