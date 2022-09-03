@@ -169,7 +169,12 @@ class MailchimpToCrmSynchronizer
                 return;
         }
     
-        $this->crmClient->put('member/' . $crmId, $crmData);
+        try {
+            $this->crmClient->put('member/' . $crmId, $crmData);
+        } catch (NotFoundHttpException $e) {
+            $this->logWebhook('info', $callType, $mailchimpId, "Member not found in Webling. Action could not be executed: $callType", $crmId);
+            return;
+        }
     
         $this->logWebhook('debug', $callType, $mailchimpId, "Sync successful");
     }
