@@ -165,7 +165,8 @@ class MailchimpToCrmSynchronizer
                 break;
     
             default:
-                $this->logWebhook('notice', $callType, $mailchimpId, __METHOD__ . " was called with an undefined webhook event.");
+                $this->logWebhook('error', $callType, $mailchimpId, __METHOD__ . " was called with an undefined webhook event.");
+                return;
         }
     
         $this->crmClient->put('member/' . $crmId, $crmData);
