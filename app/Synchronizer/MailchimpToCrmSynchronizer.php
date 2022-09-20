@@ -10,6 +10,7 @@ use App\Http\MailChimpClient;
 use App\Mail\WrongSubscription;
 use App\Synchronizer\Mapper\FieldMaps\FieldMapGroup;
 use App\Synchronizer\Mapper\Mapper;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -118,9 +119,13 @@ class MailchimpToCrmSynchronizer
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
                 try {
                     $get = $this->crmClient->get('member/' . $crmId);
-                } catch (NotFoundHttpException $e) {
-                    $this->logWebhook('debug', $callType, $mailchimpId, "Tried to unsubscribe member, but member not found in Webling. So there is also nothing to unsubscribe. No action taken.", $crmId);
-                    return;
+                } catch (ClientException $e) {
+                    if ($e->getResponse()->getStatusCode() === 404) {
+                        $this->logWebhook('debug', $callType, $mailchimpId, "Tried to unsubscribe member, but member not found in Webling. So there is also nothing to unsubscribe. No action taken.", $crmId);
+                        return;
+                    }
+        
+                    throw $e;
                 }
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);
