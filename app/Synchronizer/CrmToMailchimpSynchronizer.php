@@ -707,14 +707,19 @@ class CrmToMailchimpSynchronizer
                 unset($matches['matches'][$idx], $matches['ratings'][(int)$id]);
             }
         }
-        
+    
+        // if there are no duplicates
+        if (1 >= count($matches['matches'])) {
+            return $crmData;
+        }
+    
         // if there is a clear winner in terms of membership rating
         // use this record
         $topRatedMatches = $this->extractTopRated($matches);
         if (1 === count($topRatedMatches)) {
             return $topRatedMatches[0];
         }
-        
+    
         // if we've got a prioritized group and no top-rated winner
         // use the top-rated records in the prioritized groups.
         $prioritizedGroups = $this->config->getPrioritizedGroups();
