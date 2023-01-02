@@ -13,7 +13,6 @@ use App\Synchronizer\Mapper\Mapper;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Mail;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class MailchimpToCrmSynchronizer
 {
@@ -176,9 +175,12 @@ class MailchimpToCrmSynchronizer
     
         try {
             $this->crmClient->put('member/' . $crmId, $crmData);
-        } catch (NotFoundHttpException $e) {
-            $this->logWebhook('info', $callType, $mailchimpId, "Member not found in Webling. Action could not be executed: $callType", $crmId);
-            return;
+        } catch (ClientException $e) {
+            if (404 === $e->getResponse()->getStatusCode()) {
+                $this->logWebhook('info', $callType, $mailchimpId, "Member not found in Webling. Action could not be executed: $callType", $crmId);
+                return;
+            }
+            throw $e;
         }
     
         $this->logWebhook('debug', $callType, $mailchimpId, "Sync successful");

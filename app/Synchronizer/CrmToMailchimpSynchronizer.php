@@ -708,8 +708,8 @@ class CrmToMailchimpSynchronizer
             }
         }
     
-        // if there are no duplicates
-        if (1 >= count($matches['matches'])) {
+        // if there are no matches left
+        if (0 === count($matches['matches'])) {
             return $crmData;
         }
     
