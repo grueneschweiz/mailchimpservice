@@ -79,6 +79,7 @@ jobs:
           app
           sh
           -c
-          'curl -L https://github.com/php-coveralls/php-coveralls/releases/download/v2.5.2/php-coveralls.phar > /tmp/php-coveralls
+          'git config --global --add safe.directory /var/www/html
+          && curl -L https://github.com/php-coveralls/php-coveralls/releases/download/v2.5.2/php-coveralls.phar > /tmp/php-coveralls
           && chmod u+x /tmp/php-coveralls
           && /tmp/php-coveralls --coverage_clover=/var/www/html/build/logs/clover.xml -v'
