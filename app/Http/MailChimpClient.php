@@ -243,53 +243,47 @@ class MailChimpClient
     
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
-            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'Invalid email address'))
-                || (isset($put['detail']) && strpos($put['detail'], 'provide a valid email address.'))
+            $errorMsg = $put['errors'][0]['message'] ?? $put['detail'] ?? print_r($put, true);
+
+            if (str_starts_with($errorMsg, 'Invalid email address')
+                || strpos($errorMsg, 'provide a valid email address.')
             ) {
-                if (isset($put['errors']) && !empty($put['errors'][0]['message'])) {
-                    $msg = $put['errors'][0]['message'];
-                } elseif (!empty($put['detail'])) {
-                    $msg = $put['detail'];
-                } else {
-                    $msg = print_r($put, true);
-                }
-                throw new InvalidEmailException($msg);
+                throw new InvalidEmailException($errorMsg);
             }
-            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "cleaned."')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Cleaned".'))) {
-                throw new CleanedEmailException($put['errors'][0]['message']);
+            if (str_starts_with($errorMsg, 'This member\'s status is "cleaned."') ||
+                (strpos($errorMsg, 'is already in this list with a status of "Cleaned".'))) {
+                throw new CleanedEmailException($errorMsg);
             }
-            if ((isset($put['errors']) && 0 === strpos($put['errors'][0]['message'], 'This member\'s status is "unsubscribed."')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Unsubscribed".')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'has previously unsubscribed from this list and must opt in again.')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], "was previously removed from this audience. To rejoin, they'll need to sign up using a Mailchimp form.")) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], "was permanently deleted and cannot be re-imported. The contact must re-subscribe to get back on the list."))
+            if (str_starts_with($errorMsg, 'This member\'s status is "unsubscribed."') ||
+                (strpos($errorMsg, 'is already in this list with a status of "Unsubscribed".')) ||
+                (strpos($errorMsg, 'has previously unsubscribed from this list and must opt in again.')) ||
+                (strpos($errorMsg, "was previously removed from this audience. To rejoin, they'll need to sign up using a Mailchimp form.")) ||
+                (strpos($errorMsg, "was permanently deleted and cannot be re-imported. The contact must re-subscribe to get back on the list."))
             ) {
-                throw new UnsubscribedEmailException($put['errors'][0]['message']);
+                throw new UnsubscribedEmailException($errorMsg);
             }
-            if ((isset($put['detail']) && strpos($put['detail'], 'is already a list member')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Deleted".')) ||
-                (isset($put['errors']) && strpos($put['errors'][0]['message'], 'is already in this list with a status of "Subscribed".'))
+            if (strpos($errorMsg, 'is already a list member') ||
+                (strpos($errorMsg, 'is already in this list with a status of "Deleted".')) ||
+                (strpos($errorMsg, 'is already in this list with a status of "Subscribed".'))
             ) {
-                $errors = isset($put['errors']) && !empty($put['errors'][0]['message']) ? " Errors: {$put['errors'][0]['message']}" : '';
-                throw new AlreadyInListException("{$put['detail']}$errors Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
+                throw new AlreadyInListException("{$errorMsg} Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
             }
-            if (isset($put['errors']) && strpos($put['errors'][0]['message'], 'status is "archived."')
+            if (strpos($errorMsg, 'status is "archived."')
             ) {
-                throw new ArchivedException($put['errors'][0]['message']);
+                throw new ArchivedException($errorMsg);
             }
-            if (isset($put['detail']) && strpos($put['detail'], 'compliance state')) {
-                throw new EmailComplianceException($put['detail']);
+            if (strpos($errorMsg, 'compliance state')) {
+                throw new EmailComplianceException($errorMsg);
             }
-            if (isset($put['detail']) && strpos($put['detail'], 'looks fake or invalid, please enter a real email address.')) {
-                throw new FakeEmailException($put['detail']);
+            if (strpos($errorMsg, 'looks fake or invalid, please enter a real email address.')) {
+                throw new FakeEmailException($errorMsg);
             }
-            if (isset($put['detail']) && strpos($put['detail'], 'merge fields were invalid')) {
-                throw new MergeFieldException($put['detail']);
+            if (strpos($errorMsg, 'merge fields were invalid')) {
+                throw new MergeFieldException($errorMsg);
             }
-            if (isset($put['errors']) && strpos($put['errors'][0]['message'], "has signed up to a lot of lists very recently; we're not allowing more signups for now.")
+            if (strpos($errorMsg, "has signed up to a lot of lists very recently; we're not allowing more signups for now.")
             ) {
-                throw new MailchimpTooManySubscriptionsException($put['errors'][0]['message']);
+                throw new MailchimpTooManySubscriptionsException($errorMsg);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);
