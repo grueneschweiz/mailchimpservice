@@ -878,6 +878,8 @@ class CrmToMailchimpSynchronizer
     
                 // then create a new one with the new email address
                 $this->putSubscriber($mcRecord, "", false);
+            } else {
+                $this->logRecord('info', $email, $e->getMessage());
             }
         } catch (MailchimpTooManySubscriptionsException $e) {
             $this->logRecord('info', $email, "Blocked by Mailchimp's subscription rate limit. Retrying later.");
