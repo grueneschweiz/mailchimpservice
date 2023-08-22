@@ -220,6 +220,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                     'LANME' => 'Last Name',
                     'GENDER' => 'n',
                     'WEBLINGID' => (string)$crmId,
+                        'BIRTHDAY' => '2022-08-22'
                 ],
             ],
         ];
@@ -272,6 +273,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             'firstName' => 'my first name',
             'lastName' => 'my last name',
             'gender' => 'f',
+                'birthday' => '2023-08-22',
             'newsletterCountryD' => 'yes',
             'newsletterCountryF' => 'no',
             'pressReleaseCountryD' => 'no',

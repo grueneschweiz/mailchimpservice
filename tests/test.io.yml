@@ -110,3 +110,7 @@ fields:
     valid: '2022-12-31'
     secret: v504CnK8BoNsznCSPWMiZtqLDu6oQOPh
     sync: toMailchimp
+  - crmKey: birthday
+    mailchimpKey: BIRTHDAY
+    type: merge
+    sync: toMailchimp
