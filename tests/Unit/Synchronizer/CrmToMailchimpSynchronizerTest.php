@@ -170,6 +170,7 @@ class CrmToMailchimpSynchronizerTest extends TestCase
             'firstName' => 'my first name',
             'lastName' => 'my last name',
             'gender' => 'f',
+                'birthday' => '2023-08-22',
             'newsletterCountryD' => 'yes',
             'newsletterCountryF' => 'no',
             'pressReleaseCountryD' => 'no',
