@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Http\Controllers\RestApi\EndpointHelper;
 use Tests\TestCase;
 
-class RestControllerTest extends TestCase
+class RestApiRevisionTest extends TestCase
 {
     use RefreshDatabase;
     
