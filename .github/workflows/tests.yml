@@ -61,7 +61,7 @@ jobs:
 
       - name: Show logs if tests failed
         if: ${{ failure() }}
-        run: cat storage/logs/laravel-*.log
+        run: cat storage/logs/laravel*.log
 
       - name: publish coverage report
         if: ${{ success() }}
