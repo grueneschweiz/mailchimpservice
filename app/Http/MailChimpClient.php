@@ -76,7 +76,7 @@ class MailChimpClient
     {
         $id = self::calculateSubscriberId($email);
         
-        $get = $this->client->get("lists/{$this->listId}/members/$id");
+        $get = $this->client->get("lists/{$this->listId}/members/$id", [], 30);
         $this->validateResponseStatus('GET subscriber', $get);
         $this->validateResponseContent('GET subscriber', $get);
         
