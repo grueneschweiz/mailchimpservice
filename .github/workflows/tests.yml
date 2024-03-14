@@ -12,28 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: pull docker containers
-        run: docker-compose pull mysql
+        run: docker compose pull mysql
 
       - uses: satackey/action-docker-layer-caching@v0.0.11
         continue-on-error: true
 
       - name: build docker container
-        run: docker-compose build
+        run: docker compose build
 
       - name: PHP dependencies
-        run: docker-compose run -u root:root app composer install
+        run: docker compose run -u root:root app composer install
 
       - name: env
         run: cp .env.ci .env
 
       - name: laravel key
-        run: docker-compose run -u root:root app php artisan key:generate
+        run: docker compose run -u root:root app php artisan key:generate
 
       - name: start containers
-        run: docker-compose up -d mysql
+        run: docker compose up -d mysql
 
       - name: wait for mysql
         run: |
@@ -42,13 +42,13 @@ jobs:
           done
 
       - name: run migrations
-        run: docker-compose run -u root:root app php artisan migrate
+        run: docker compose run -u root:root app php artisan migrate
 
       - name: run tests
         env:
           MAILCHIMP_APIKEY: ${{ secrets.MAILCHIMP_APIKEY }}
         run: >-
-          docker-compose 
+          docker compose 
           run 
           -u root:root
           -e MAILCHIMP_APIKEY=${MAILCHIMP_APIKEY}
@@ -68,7 +68,7 @@ jobs:
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-          docker-compose 
+          docker compose 
           run
           -u root:root
           -e GITHUB_REF=${GITHUB_REF} 
