@@ -17,23 +17,23 @@ and start contributing 😍.
 1. Start docker
 1. Clone this repo `git clone https://github.com/grueneschweiz/mailchimpservice.git`
 1. `cd` into the folder containing the repo
-1. Execute `docker-compose run wsapp_mailchimp composer install` and have a ☕️ while
+1. Execute `docker compose run app composer install` and have a ☕️ while
    it installs.
-1. Execute `docker-compose run wsapp_mailchimp sh -c 'cp .env.example .env && php artisan key:generate'` to generate the
+1. Execute `docker compose run app sh -c 'cp .env.example .env && php artisan key:generate'` to generate the
    app secrets.
-1. Execute `docker-compose up -d` to start up the stack. The first time you run
+1. Execute `docker compose up -d` to start up the stack. The first time you run
    this command, it will take a minute or two. Subsequent calls will be much faster.
 1. After a few seconds: Visit [localhost:9001](http://localhost:9001). If you
    get a connection error, wait 30 seconds then try again.
 
 ### Docker Cheat Sheet
 
-- Install: `docker-compose run wsapp_mailchimp composer install`
-- Start up: `docker-compose up -d`
-- Shut down: `docker-compose down`
+- Install: `docker compose run app composer install`
+- Start up: `docker compose up -d`
+- Shut down: `docker compose down`
 - Execute Laravel CLI commands (enter container): `docker exec -it wsapp_mailchimp bash` use `exit` to escape the
   container.
-- Add dependency using composer: `docker-compose un wsapp_mailchimp composer require DEPENDENCY`
+- Add dependency using composer: `docker compose run app composer require DEPENDENCY`
 
 ### Testing
 In the main folder run `php vendor/phpunit/phpunit/phpunit tests` to run the tests locally.
