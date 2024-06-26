@@ -23,6 +23,7 @@ and start contributing 😍.
    app secrets.
 1. Execute `docker compose up -d` to start up the stack. The first time you run
    this command, it will take a minute or two. Subsequent calls will be much faster.
+1. Do the db migrations: `docker exec -it wsapp_mailchimp bash` and `php artisan migrate`
 1. After a few seconds: Visit [localhost:9001](http://localhost:9001). If you
    get a connection error, wait 30 seconds then try again.
 
@@ -33,6 +34,9 @@ and start contributing 😍.
 - Shut down: `docker compose down`
 - Execute Laravel CLI commands (enter container): `docker exec -it wsapp_mailchimp bash` use `exit` to escape the
   container.
+  - add your first entry `php artisan endpoint:add myconfigfile.yml`
+  - sync an instance `php artisan sync:all toMailchimp myconfigfile.yml --limit=10`
+
 - Add dependency using composer: `docker compose run app composer require DEPENDENCY`
 
 ### Testing
