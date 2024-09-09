@@ -88,8 +88,16 @@ class FieldMapGroup extends FieldMap
         if (!array_key_exists($this->crmKey, $data)) {
             throw new ParseCrmDataException(sprintf("Missing key '%s'", $this->crmKey));
         }
-    
-        $this->condition->setFromCrmData($data[$this->crmKey]);
+
+        $searchableString = "";
+        if(is_array($data[$this->crmKey])) {
+            // the initial comma is needed for distinguishing e.g. "agriculture" and "culture".
+            $searchableString = ",".implode(",", $data[$this->crmKey]);
+        } else {
+            $searchableString = $data[$this->crmKey];
+        }
+
+        $this->condition->setFromCrmData($searchableString);
     }
     
     /**
