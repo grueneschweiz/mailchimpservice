@@ -122,17 +122,21 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         ];
         
         $this->sync->syncSingle($webhookData);
-        
-        Mail::assertSent(WrongSubscription::class, function ($mail) use ($subscriber) {
-            $this->assertEquals($subscriber['merge_fields']['FNAME'], $mail->mail->contactFirstName);
-            $this->assertEquals($subscriber['merge_fields']['LNAME'], $mail->mail->contactLastName);
-            $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
-            $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
-            $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
-            $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
+
+        if ($this->config->getIgnoreSubscribeThroughMailchimp()) {
+            Mail::assertNotSent(WrongSubscription::class);
+        } else {
+            Mail::assertSent(WrongSubscription::class, function ($mail) use ($subscriber) {
+                $this->assertEquals($subscriber['merge_fields']['FNAME'], $mail->mail->contactFirstName);
+                $this->assertEquals($subscriber['merge_fields']['LNAME'], $mail->mail->contactLastName);
+                $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
+                $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
+                $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
+                $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
     
-            return true;
-        });
+                return true;
+            });
+        }
     
         // cleanup
         $this->mcClientTesting->deleteSubscriber($email);
@@ -182,17 +186,21 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         
         $this->sync->syncSingle($webhookData);
         
-        Mail::assertSent(WrongSubscription::class, function ($mail) use ($subscriber) {
-            $this->assertEquals($subscriber['merge_fields']['FNAME'], $mail->mail->contactFirstName);
-            $this->assertEquals($subscriber['merge_fields']['LNAME'], $mail->mail->contactLastName);
-            $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
-            $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
-            $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
-            $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
-            
-            return true;
-        });
-        
+        if ($this->config->getIgnoreSubscribeThroughMailchimp()) {
+            Mail::assertNotSent(WrongSubscription::class);
+        } else {
+            Mail::assertSent(WrongSubscription::class, function ($mail) use ($subscriber) {
+                $this->assertEquals($subscriber['merge_fields']['FNAME'], $mail->mail->contactFirstName);
+                $this->assertEquals($subscriber['merge_fields']['LNAME'], $mail->mail->contactLastName);
+                $this->assertEquals($subscriber['email_address'], $mail->mail->contactEmail);
+                $this->assertEquals(env('ADMIN_EMAIL'), $mail->mail->adminEmail);
+                $this->assertEquals($this->config->getDataOwner()['name'], $mail->mail->dataOwnerName);
+                $this->assertEquals(self::CONFIG_FILE_NAME, $mail->mail->configName);
+
+                return true;
+            });
+        }
+
         // cleanup
         $this->mcClientTesting->deleteSubscriber($email);
     }

@@ -162,6 +162,20 @@ class Config
         
         return false;
     }
+
+    /**
+     * Return bool that indicates if subscriptions through mailchimp should be ignored
+     *
+     * @return bool
+     */
+    public function getIgnoreSubscribeThroughMailchimp(): bool
+    {
+        if (array_key_exists('ignoreSubscribeThroughMailchimp', $this->mailchimp)) {
+            return filter_var($this->mailchimp['ignoreSubscribeThroughMailchimp'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return false;
+    }
     
     /**
      * Return the default list id in Mailchimp
