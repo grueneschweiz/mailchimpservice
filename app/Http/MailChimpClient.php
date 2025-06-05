@@ -2,6 +2,8 @@
 
 namespace App\Http;
 
+use Illuminate\Support\Facades\Log;
+
 use App\Exceptions\AlreadyInListException;
 use App\Exceptions\ArchivedException;
 use App\Exceptions\CleanedEmailException;
@@ -168,26 +170,35 @@ class MailChimpClient
      */
     private function getAllSubscribers(string $crmIdKey): array
     {
+        $logger = Log::channel('single');
+
         if (null !== $this->subscribers) {
             return $this->subscribers;
         }
         
         $offset = 0;
-        
+        $maxIterations = 1000;
+        $iteration = 0;
+
         while (true) {
             $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset&fields=members.email_address,members.merge_fields", [], 30);
-            
+
+            if (++$iteration > $maxIterations) {
+                $logger->error("[getAllSubscribers] Exceeded max iterations ($maxIterations). Breaking loop.");
+                break;
+            }
+
             $this->validateResponseStatus('GET multiple subscribers', $get);
             $this->validateResponseContent('GET multiple subscribers', $get);
-            
+
             if (0 === count($get['members'])) {
                 break;
             }
-            
+
             foreach ($get['members'] as $member) {
                 $this->subscribers[$member['email_address']] = $member['merge_fields'][$crmIdKey];
             }
-            
+
             $offset += self::MC_GET_LIMIT;
         }
         
