@@ -25,15 +25,21 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api']], function () {
         Route::post('webhook/{secret}', function (Request $request, string $secret) {
             $controller = new RestController();
             $controller->handlePost($request, $secret);
-            
+
             return response('', 204);
         })->name(EndpointCommand::MC_ENDPOINT_ROUTE_NAME);
-        
+
         Route::get('webhook/{secret}', function (Request $request, string $secret) {
             $controller = new RestController();
             $controller->handleGet($secret);
-            
+
             return response('', 204);
         })->name(EndpointCommand::MC_ENDPOINT_ROUTE_NAME);
+
+        Route::post('contact/{secret}', function (Request $request, string $secret) {
+            $controller = new RestController();
+            $controller->addContact($request, $secret);
+            return response('', 204);
+        })->name(EndpointCommand::WEBSITE_TO_MC_ENDPOINT_ROUTE_NAME);
     });
 });

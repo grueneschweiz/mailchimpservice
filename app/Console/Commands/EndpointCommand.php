@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 abstract class EndpointCommand extends Command
 {
     public const MC_ENDPOINT_ROUTE_NAME = 'mailchimp_endpoint';
+    public const WEBSITE_TO_MC_ENDPOINT_ROUTE_NAME = 'website_to_mailchimp_endpoint';
     
     /**
      * The config validation errors
