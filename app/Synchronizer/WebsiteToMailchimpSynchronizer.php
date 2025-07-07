@@ -101,6 +101,13 @@ class WebsiteToMailchimpSynchronizer
         // Add the subscriber to Mailchimp
         $response = $this->mailchimpClient->putSubscriber($mailchimpData);
 
+        // Add tags to new subscriber
+        $tags = [$this->config->getNewTag()];
+        if (isset($websiteData['notesCountry'])) {
+            $tags[] = $websiteData['notesCountry'];
+        }
+        $this->mailchimpClient->addTagsToSubscriber($response['id'], $tags);
+
         return $response;
     }
 

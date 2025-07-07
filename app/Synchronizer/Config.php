@@ -175,10 +175,24 @@ class Config
         if (empty($this->mailchimp['listId'])) {
             throw new ConfigException("Missing mailchimp list id.");
         }
-        
+
         return $this->mailchimp['listId'];
     }
-    
+
+    /**
+     * Return the tag that should be added to new subscribers
+     *
+     * @return string
+     */
+    public function getNewTag(): string
+    {
+        if (empty($this->mailchimp['newtag'])) {
+            return 'new';
+        }
+
+        return $this->mailchimp['newtag'];
+    }
+
     /**
      * The mailchimp merge field key that corresponds to the crm's id
      *

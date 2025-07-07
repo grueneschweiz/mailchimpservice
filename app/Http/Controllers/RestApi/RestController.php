@@ -45,7 +45,7 @@ class RestController
     }
 
     /**
-     * Add a new contact to Mailchimp using CRM data
+     * Add a new contact to Mailchimp from the website (using CRM-mapping)
      *
      * @param Request $request
      * @param string $secret

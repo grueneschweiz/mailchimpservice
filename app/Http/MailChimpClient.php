@@ -293,6 +293,30 @@ class MailChimpClient
         
         return $put;
     }
+
+    /**
+     * Add or update tags for a subscriber
+     *
+     * @param string $subscriberId The MailChimp subscriber ID
+     * @param array $tags Array of tag names (strings) or tag objects with 'name' and 'status'
+     *
+     * @throws MailchimpClientException
+     */
+    public function addTagsToSubscriber(string $subscriberId, array $tags)
+    {
+        if (empty($tags)) {
+            return;
+        }
+
+        $formattedTags = [];
+        foreach ($tags as $tag) {
+            if (is_string($tag)) {
+                $formattedTags[] = (object)['name' => $tag, 'status' => 'active'];
+            }
+        }
+
+        $this->postSubscriberTags($subscriberId, ['tags' => $formattedTags]);
+    }
     
     /**
      * Update tags of subscriber
