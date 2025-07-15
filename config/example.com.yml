@@ -14,6 +14,7 @@ mailchimp:
   listId: 6f33e28fa3
   interesstCategoriesId: de75614d35
   syncAll: false
+  ignoreSubscribeThroughMailchimp: true
 
 webling:
   prioritizedGroups:

@@ -93,19 +93,22 @@ class MailchimpToCrmSynchronizer
         
         switch ($callType) {
             case self::MC_SUBSCRIBE:
-                $mcData = $this->mcClient->getSubscriber($email);
-                $mergeFields = $this->extractMergeFields($mcData);
-    
-                // if there is no crm id
-                if (empty($mergeFields[$this->config->getMailchimpKeyOfCrmId()])) {
-                    // send mail to dataOwner, that he should
-                    // add the subscriber to webling not mailchimp
-                    $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
-                    $this->logWebhook('debug', $callType, $mailchimpId, "Notified data owner.");
+                // if configured, don't send notifications, if not, keep backwards compatibility
+                if(!$this->config->getIgnoreSubscribeThroughMailchimp()) {
+                    $mcData = $this->mcClient->getSubscriber($email);
+                    $mergeFields = $this->extractMergeFields($mcData);
+
+                    // if there is no crm id
+                    if (empty($mergeFields[$this->config->getMailchimpKeyOfCrmId()])) {
+                        // send mail to dataOwner, that he should
+                        // add the subscriber to webling not mailchimp
+                        $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
+                        $this->logWebhook('debug', $callType, $mailchimpId, "Notified data owner.");
+                    }
                 }
-    
+
                 return;
-    
+
             case self::MC_UNSUBSCRIBE:
                 $mergeFields = $this->extractMergeFields($mcData['data']);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
