@@ -4,7 +4,15 @@ namespace App\Http\Controllers\RestApi;
 
 use App\MailchimpEndpoint;
 use App\Synchronizer\MailchimpToCrmSynchronizer;
+use App\Synchronizer\WebsiteToMailchimpSynchronizer;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Exceptions\MailchimpClientException;
+use App\Exceptions\EmailComplianceException;
+use App\Exceptions\InvalidEmailException;
+use App\Exceptions\MemberDeleteException;
+use App\Exceptions\ConfigException;
+use App\Exceptions\ParseCrmDataException;
 
 class RestController
 {
@@ -34,5 +42,24 @@ class RestController
         if (!$endpoint) {
             abort(401, 'Invalid secret.');
         }
+    }
+
+    /**
+     * Add a new contact to Mailchimp from the website (using CRM-mapping)
+     *
+     * @param Request $request
+     * @param string $secret
+     */
+    public function addContact(Request $request, string $secret)
+    {
+        /** @var MailchimpEndpoint|null $endpoint */
+        $endpoint = MailchimpEndpoint::where('secret', $secret)->first();
+
+        if (!$endpoint) {
+            abort(401, 'Invalid secret.');
+        }
+
+        $sync = new WebsiteToMailchimpSynchronizer($endpoint->config);
+        $sync->syncSingle($request->post());
     }
 }
