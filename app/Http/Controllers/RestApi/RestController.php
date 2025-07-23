@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\RestApi;
 
 use App\MailchimpEndpoint;
-use App\Synchronizer\MailchimpToCrmSynchronizer;
+use App\Synchronizer\MailchimpToCrmWebhookSynchronizer;
 use App\Synchronizer\WebsiteToMailchimpSynchronizer;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -18,17 +18,16 @@ class RestController
 {
     public function handlePost(Request $request, string $secret)
     {
-        /** @var MailchimpEndpoint|null $endpoint */
         $endpoint = MailchimpEndpoint::where('secret', $secret)->first();
-        
+
         if (!$endpoint) {
             abort(401, 'Invalid secret.');
         }
-        
-        $sync = new MailchimpToCrmSynchronizer($endpoint->config);
-        $sync->syncSingle($request->post());
+
+        $sync = new MailchimpToCrmWebhookSynchronizer($endpoint->config);
+        $sync->handleMailchimpUpdate($request->post());
     }
-    
+
     /**
      * To add a webhook in Mailchimp, Mailchimp must be able to make a successful GET request to the given address.
      *
@@ -38,7 +37,7 @@ class RestController
     {
         /** @var MailchimpEndpoint|null $endpoint */
         $endpoint = MailchimpEndpoint::where('secret', $secret)->first();
-        
+
         if (!$endpoint) {
             abort(401, 'Invalid secret.');
         }

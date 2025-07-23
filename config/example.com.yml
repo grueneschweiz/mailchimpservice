@@ -12,9 +12,17 @@ dataOwner:
 
 mailchimp:
   listId: 6f33e28fa3
-  interesstCategoriesId: de75614d35
   syncAll: false
   ignoreSubscribeThroughMailchimp: true
+
+mailchimpToCrm:
+  interestsToSync: #order corresponds to language order in config
+    - 55f795def4
+    - 1851be732e
+  newtag: New
+  changedWithinMonths: 6
+  optInOlderThanMonths: 2
+  groupForNewMembers: 7654321 #could be one of the prioritizedGroups
 
 webling:
   prioritizedGroups:
@@ -63,6 +71,24 @@ fields:
     trueCondition: yes
     falseCondition: no
     sync: both
+  - crmKey: language
+    mailchimpTagName: Deutsch
+    type: tag
+    conditions:
+      - d
+    sync: toMailchimp
+  - crmKey: language
+    mailchimpTagName: Française
+    type: tag
+    conditions:
+      - f
+    sync: toMailchimp
+  - crmKey: language
+    mailchimpTagName: Italiano
+    type: tag
+    conditions:
+      - i
+    sync: toMailchimp
   - crmKey: notesCountry
     mailchimpCategoryId: bba5d2d564
     type: group

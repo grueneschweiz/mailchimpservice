@@ -19,7 +19,7 @@ class MailChimpClient
 {
     private const MC_GET_LIMIT = 1000;
     private const API_WRITE_TIMEOUT = 30; // seconds
-    
+
     /**
      * The Mailchimp client object
      *
@@ -28,21 +28,21 @@ class MailChimpClient
      * @var MailChimp
      */
     private $client;
-    
+
     /**
      * The MailChimp api key
      *
      * @var string
      */
     private $apiKey;
-    
+
     /**
      * The list we're working with
      *
      * @var string
      */
     private $listId;
-    
+
     /**
      * In memory cache for all subscriber.
      *
@@ -51,7 +51,7 @@ class MailChimpClient
      * @var array
      */
     private $subscribers;
-    
+
     /**
      * @param string $api_key MailChimp api key
      *
@@ -63,7 +63,7 @@ class MailChimpClient
         $this->listId = $listId;
         $this->client = new MailChimp($api_key);
     }
-    
+
     /**
      * Get subscriber by email
      *
@@ -75,14 +75,14 @@ class MailChimpClient
     public function getSubscriber(string $email)
     {
         $id = self::calculateSubscriberId($email);
-        
+
         $get = $this->client->get("lists/{$this->listId}/members/$id", [], 30);
         $this->validateResponseStatus('GET subscriber', $get);
         $this->validateResponseContent('GET subscriber', $get);
-        
+
         return $get;
     }
-    
+
     /**
      * Calculate the id of the contact in mailchimp
      *
@@ -96,10 +96,10 @@ class MailChimpClient
     {
         $email = trim($email);
         $email = strtolower($email);
-        
+
         return md5($email);
     }
-    
+
     /**
      * Throw exception if we get a falsy response.
      *
@@ -114,7 +114,7 @@ class MailChimpClient
             throw new MailchimpClientException("$method request against Mailchimp failed: {$this->client->getLastError()}");
         }
     }
-    
+
     /**
      * Throw exception if we get response with erroneous content.
      *
@@ -127,17 +127,17 @@ class MailChimpClient
     {
         if (isset($response['status']) && is_numeric($response['status']) && $response['status'] !== 200) {
             $message = "$method request against Mailchimp failed (status code: {$response['status']}): {$response['detail']}";
-            
+
             if (array_key_exists('errors', $response)) {
                 foreach ($response['errors'] as $k => $v) {
                     $message .= " Errors[$k] => {$v['message']}";
                 }
             }
-            
+
             throw new MailchimpClientException($message);
         }
     }
-    
+
     /**
      * Return the email address of the first subscriber that has the given value in the given merge tag field.
      *
@@ -152,10 +152,10 @@ class MailChimpClient
     public function getSubscriberEmailByCrmId(string $crmId, string $crmIdKey)
     {
         $subscribers = $this->getAllSubscribers($crmIdKey);
-        
+
         return array_search($crmId, $subscribers);
     }
-    
+
     /**
      * Return cached array of all mailchimp entries with their email address as key and the crm id as value.
      *
@@ -171,33 +171,33 @@ class MailChimpClient
         if (null !== $this->subscribers) {
             return $this->subscribers;
         }
-        
+
         $offset = 0;
-        
+
         while (true) {
             $get = $this->client->get("lists/{$this->listId}/members?count=" . self::MC_GET_LIMIT . "&offset=$offset&fields=members.email_address,members.merge_fields", [], 30);
-            
+
             $this->validateResponseStatus('GET multiple subscribers', $get);
             $this->validateResponseContent('GET multiple subscribers', $get);
-            
+
             if (0 === count($get['members'])) {
                 break;
             }
-            
+
             foreach ($get['members'] as $member) {
                 $this->subscribers[$member['email_address']] = $member['merge_fields'][$crmIdKey];
             }
-            
+
             $offset += self::MC_GET_LIMIT;
         }
-        
+
         if (!$this->subscribers) {
             $this->subscribers = [];
         }
-        
+
         return $this->subscribers;
     }
-    
+
     /**
      * Upsert subscriber
      *
@@ -223,38 +223,42 @@ class MailChimpClient
         if (empty($mcData['email_address'])) {
             throw new \InvalidArgumentException('Missing email_address.');
         }
-        
+
         if (!isset($mcData['status']) && !isset($mcData['status_if_new'])) {
             $mcData['status_if_new'] = 'subscribed';
         }
-    
+
         if (!$email) {
             $email = $mcData['email_address'];
         }
-    
+
         // it is possible, that the subscriber id differs from the lowercase email md5-hash (why?)
         // so we need a possibility to provide it manually.
         if (!$id) {
             $id = self::calculateSubscriberId($email);
         }
-    
+
         $endpoint = "lists/{$this->listId}/members/$id";
         $put = $this->client->put($endpoint, $mcData, self::API_WRITE_TIMEOUT);
-    
+
         $this->validateResponseStatus('PUT subscriber', $put);
         if (isset($put['status']) && is_numeric($put['status']) && $put['status'] !== 200) {
             $errorMsg = $put['errors'][0]['message'] ?? $put['detail'] ?? print_r($put, true);
 
-            if (str_starts_with($errorMsg, 'Invalid email address')
+            if (
+                str_starts_with($errorMsg, 'Invalid email address')
                 || strpos($errorMsg, 'provide a valid email address.')
             ) {
                 throw new InvalidEmailException($errorMsg);
             }
-            if (str_starts_with($errorMsg, 'This member\'s status is "cleaned."') ||
-                (strpos($errorMsg, 'is already in this list with a status of "Cleaned".'))) {
+            if (
+                str_starts_with($errorMsg, 'This member\'s status is "cleaned."') ||
+                (strpos($errorMsg, 'is already in this list with a status of "Cleaned".'))
+            ) {
                 throw new CleanedEmailException($errorMsg);
             }
-            if (str_starts_with($errorMsg, 'This member\'s status is "unsubscribed."') ||
+            if (
+                str_starts_with($errorMsg, 'This member\'s status is "unsubscribed."') ||
                 (strpos($errorMsg, 'is already in this list with a status of "Unsubscribed".')) ||
                 (strpos($errorMsg, 'has previously unsubscribed from this list and must opt in again.')) ||
                 (strpos($errorMsg, "was previously removed from this audience. To rejoin, they'll need to sign up using a Mailchimp form.")) ||
@@ -262,14 +266,14 @@ class MailChimpClient
             ) {
                 throw new UnsubscribedEmailException($errorMsg);
             }
-            if (strpos($errorMsg, 'is already a list member') ||
+            if (
+                strpos($errorMsg, 'is already a list member') ||
                 (strpos($errorMsg, 'is already in this list with a status of "Deleted".')) ||
                 (strpos($errorMsg, 'is already in this list with a status of "Subscribed".'))
             ) {
                 throw new AlreadyInListException("{$errorMsg} Email used for id calc: $email. Called endpoint: $endpoint. Data: " . str_replace("\n", ', ', print_r($mcData, true)));
             }
-            if (strpos($errorMsg, 'status is "archived."')
-            ) {
+            if (strpos($errorMsg, 'status is "archived."')) {
                 throw new ArchivedException($errorMsg);
             }
             if (strpos($errorMsg, 'compliance state')) {
@@ -281,16 +285,15 @@ class MailChimpClient
             if (strpos($errorMsg, 'merge fields were invalid')) {
                 throw new MergeFieldException($errorMsg);
             }
-            if (strpos($errorMsg, "has signed up to a lot of lists very recently; we're not allowing more signups for now.")
-            ) {
+            if (strpos($errorMsg, "has signed up to a lot of lists very recently; we're not allowing more signups for now.")) {
                 throw new MailchimpTooManySubscriptionsException($errorMsg);
             }
         }
         $this->validateResponseContent('PUT subscriber', $put);
-        
+
         // this is needed for updates
         $this->updateSubscribersTags($put['id'], $mcData['tags']);
-        
+
         return $put;
     }
 
@@ -317,7 +320,7 @@ class MailChimpClient
 
         $this->postSubscriberTags($subscriberId, ['tags' => $formattedTags]);
     }
-    
+
     /**
      * Update tags of subscriber
      *
@@ -331,16 +334,16 @@ class MailChimpClient
     private function updateSubscribersTags(string $id, array $new)
     {
         $get = $this->getSubscriberTags($id);
-        
+
         $current = array_column($get['tags'], 'name');
-        
+
         $update = [];
         foreach ($current as $currentTag) {
             if (!in_array($currentTag, $new)) {
                 $update[] = (object)['name' => $currentTag, 'status' => 'inactive'];
             }
         }
-        
+
         foreach ($new as $newTag) {
             // if we update a subscriber our $new array is two dimensional
             // if we insert, the $new array simply contains the tags
@@ -351,14 +354,14 @@ class MailChimpClient
                 $update[] = (object)['name' => $newTag, 'status' => 'active'];
             }
         }
-        
+
         if (empty($update)) {
             return;
         }
-        
+
         $this->postSubscriberTags($id, ['tags' => $update]);
     }
-    
+
     /**
      * Get subscriber tags
      *
@@ -367,17 +370,17 @@ class MailChimpClient
      * @return array|false
      * @throws MailchimpClientException
      */
-    private function getSubscriberTags(string $id)
+    public function getSubscriberTags(string $id)
     {
         // somehow we had a lot of timeouts when requesting the tags, therefore we increased the timeout
         $get = $this->client->get("lists/{$this->listId}/members/$id/tags", [], 30);
-        
+
         $this->validateResponseStatus('GET tags', $get);
         $this->validateResponseContent('GET tags', $get);
-        
+
         return $get;
     }
-    
+
     /**
      * Update subscriber tags
      *
@@ -392,13 +395,56 @@ class MailChimpClient
     private function postSubscriberTags(string $id, array $tags)
     {
         $post = $this->client->post("lists/{$this->listId}/members/$id/tags", $tags, self::API_WRITE_TIMEOUT);
-        
+
         $this->validateResponseStatus('POST tags', $post);
         $this->validateResponseContent('POST tags', $post);
-        
+
         return $post;
     }
-    
+
+    /**
+     * Remove a tag from a subscriber
+     *
+     * @param string $subscriberId The MailChimp subscriber ID
+     * @param string $tagName The name of the tag to remove
+     *
+     * @return array|false
+     * @throws MailchimpClientException
+     */
+    public function removeTagFromSubscriber(string $subscriberId, string $tagName)
+    {
+        return $this->postSubscriberTags($subscriberId, [
+            'tags' => [
+                (object)['name' => $tagName, 'status' => 'inactive']
+            ]
+        ]);
+    }
+
+    /**
+     * Update subscriber interests
+     *
+     * @param string $subscriberId The MailChimp subscriber ID
+     * @param string $interestCategoryId The interest category ID
+     * @param string $interestId The interest ID to set as active
+     * @param array $mergeFields Optional merge fields to update at the same time
+     *
+     * @return array|false
+     * @throws MailchimpClientException
+     */
+    public function updateMergeFields(string $subscriberId, array $mergeFields)
+    {
+        $data = [
+            'merge_fields' => $mergeFields,
+        ];
+
+        $patch = $this->client->patch("lists/{$this->listId}/members/$subscriberId", $data, self::API_WRITE_TIMEOUT);
+
+        $this->validateResponseStatus('PATCH subscriber interests', $patch);
+        $this->validateResponseContent('PATCH subscriber interests', $patch);
+
+        return $patch;
+    }
+
     /**
      * Delete subscriber
      *
@@ -411,7 +457,7 @@ class MailChimpClient
     {
         $id = self::calculateSubscriberId($email);
         $delete = $this->client->delete("lists/{$this->listId}/members/$id", [], self::API_WRITE_TIMEOUT);
-    
+
         $this->validateResponseStatus('DELETE subscriber', $delete);
         if (isset($delete['status']) && is_numeric($delete['status']) && $delete['status'] !== 200) {
             if (isset($delete['detail']) && strpos($delete['detail'], 'member cannot be removed')) {
@@ -422,10 +468,10 @@ class MailChimpClient
             // the record we wanted to delete does not exist and hence our request is satisfied.
             return;
         }
-    
+
         $this->validateResponseContent('DELETE subscriber', $delete);
     }
-    
+
     /**
      * Delete subscriber permanently
      *
@@ -437,8 +483,33 @@ class MailChimpClient
     {
         $id = self::calculateSubscriberId($email);
         $delete = $this->client->post("lists/{$this->listId}/members/$id/actions/delete-permanent", [], self::API_WRITE_TIMEOUT);
-        
+
         $this->validateResponseStatus('DELETE subscriber permanently', $delete);
         $this->validateResponseContent('DELETE subscriber permanently', $delete);
+    }
+
+    /**
+     * Get members from the configured list, filtered by specified filters
+     *
+     * @param int $count Number of members to return per page
+     * @param int $offset Offset for pagination
+     * @param array $filterParams Filters to include in the response
+     *
+     * @return array Members that have changed since the specified time
+     * @throws MailchimpClientException
+     */
+    public function getListMembers(int $count, int $offset, array $filterParams): array
+    {
+        $filterParams = array_merge([
+            'count' => $count,
+            'offset' => $offset,
+        ], $filterParams);
+
+        $get = $this->client->get("lists/{$this->listId}/members", $filterParams);
+
+        $this->validateResponseStatus('GET changed members', $get);
+        $this->validateResponseContent('GET changed members', $get);
+
+        return $get['members'] ?? [];
     }
 }

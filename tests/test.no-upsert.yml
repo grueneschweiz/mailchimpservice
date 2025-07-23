@@ -1,0 +1,24 @@
+auth:
+  mailchimp:
+    apikey: apikey
+  crm:
+    clientId: 1
+    clientSecret: 'crmclientsecret'
+    url: 'https://crmclient.url'
+
+dataOwner:
+  email: dataowner@example.com
+  name: dataowner
+
+mailchimp:
+  listId: 6f33e28fa3
+  ignoreSubscribeThroughMailchimp: true
+
+# Intentionally no mailchimpToCrm section to simulate upsert disabled
+
+fields:
+  - crmKey: email1
+    type: email
+  - crmKey: id
+    mailchimpKey: WEBLINGID
+    type: merge

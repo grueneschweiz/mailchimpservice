@@ -10,7 +10,7 @@ class Mapper
      * @var FieldMapFacade[]
      */
     private $fieldMaps;
-    
+
     /**
      * Mapper constructor.
      *
@@ -20,21 +20,22 @@ class Mapper
     {
         $this->fieldMaps = $fieldMaps;
     }
-    
+
     /**
      * Map webhook data from mailchimp so we can save it to the crm
      *
      * @param array $mailchimpData
+     * @param bool $forceBothDirections If true, all fields will be synced regardless of their sync direction
      *
      * @return array
      *
      * @throws \App\Exceptions\ParseMailchimpDataException
      */
-    public function mailchimpToCrm(array $mailchimpData)
+    public function mailchimpToCrm(array $mailchimpData, bool $forceBothDirections = false)
     {
         $data = [];
         foreach ($this->fieldMaps as $map) {
-            if ($map->canSyncToCrm()) {
+            if ($forceBothDirections || $map->canSyncToCrm()) {
                 $map->addMailchimpData($mailchimpData);
                 $crmData = $map->getCrmData();
                 foreach ($crmData as $action) {
@@ -45,10 +46,10 @@ class Mapper
                 }
             }
         }
-        
+
         return $data;
     }
-    
+
     /**
      * Map crm data to an array we can send to mailchimp's PUT members endpoint
      *
@@ -65,21 +66,21 @@ class Mapper
             if (!$map->canSyncToMailchimp()) {
                 continue;
             }
-            
+
             $map->addCrmData($crmData);
             $parentKey = $map->getMailchimpParentKey();
-            
+
             if ($parentKey) {
                 if (!isset($data[$parentKey])) {
                     $data[$parentKey] = [];
                 }
-                
+
                 $data[$parentKey] = array_merge($data[$parentKey], $map->getMailchimpDataArray());
             } else {
                 $data = array_merge($data, $map->getMailchimpDataArray());
             }
         }
-        
+
         return $data;
     }
 }

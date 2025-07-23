@@ -3,6 +3,8 @@ auth:
   crm: asdf
 dataOwner: asdf
 mailchimp: asdf
+mailchimpToCrm:
+  groupForNewMembers: invalid
 fields:
   - crmKey: email1
     type: email
