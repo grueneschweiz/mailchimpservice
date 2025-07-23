@@ -12,7 +12,7 @@ use Symfony\Component\Yaml\Yaml;
 class Config
 {
     private const CRM_ID_KEY = 'id';
-    
+
     private $fields;
     private $auth;
     private $dataOwner;
@@ -20,7 +20,7 @@ class Config
     private $errors;
     private $crmEmailKey;
     private $webling;
-    
+
     /**
      * Config constructor.
      *
@@ -32,7 +32,7 @@ class Config
     {
         $this->loadConfig($configFileName);
     }
-    
+
     /**
      * Read the config file and populate object
      *
@@ -45,52 +45,52 @@ class Config
         $configFileName = ltrim($configFileName, './');
         $configFolderPath = rtrim(config('app.config_base_path'), '/');
         $configFilePath = base_path($configFolderPath . '/' . $configFileName);
-        
+
         if (!file_exists($configFilePath)) {
             throw new ConfigException('The config file was not found.');
         }
-        
+
         try {
             $config = Yaml::parseFile($configFilePath);
         } catch (ParseException $e) {
             throw new ConfigException("YAML parse error: {$e->getMessage()}");
         }
-        
+
         // prevalidate config
         if ($config['auth']) {
             $this->auth = $config['auth'];
         } else {
             throw new ConfigException("Missing 'auth' section.");
         }
-        
+
         if ($config['dataOwner']) {
             $this->dataOwner = $config['dataOwner'];
         } else {
             throw new ConfigException("Missing 'dataOwner' section.");
         }
-        
+
         if ($config['mailchimp']) {
             $this->mailchimp = $config['mailchimp'];
         } else {
             throw new ConfigException("Missing 'mailchimp' section.");
         }
-    
+
         if ($config['fields']) {
             $this->fields = $config['fields'];
         } else {
             throw new ConfigException("Missing 'fields' section.");
         }
-    
+
         if (isset($config['webling'])) {
             $this->webling = $config['webling'];
         }
     }
-    
+
     public static function getCrmIdKey()
     {
         return self::CRM_ID_KEY;
     }
-    
+
     /**
      * Return array with crm credentials
      *
@@ -100,17 +100,18 @@ class Config
      */
     public function getCrmCredentials(): array
     {
-        if (empty($this->auth['crm'])
+        if (
+            empty($this->auth['crm'])
             || empty($this->auth['crm']['clientId'])
             || empty($this->auth['crm']['clientSecret'])
             || empty($this->auth['crm']['url'])
         ) {
             throw new ConfigException("Missing CRM credentials.");
         }
-        
+
         return $this->auth['crm'];
     }
-    
+
     /**
      * Return array with mailchimp credentials
      *
@@ -120,15 +121,16 @@ class Config
      */
     public function getMailchimpCredentials(): array
     {
-        if (empty($this->auth['mailchimp'])
+        if (
+            empty($this->auth['mailchimp'])
             || empty($this->auth['mailchimp']['apikey'])
         ) {
             throw new ConfigException("Missing Mailchimp credentials.");
         }
-        
+
         return $this->auth['mailchimp'];
     }
-    
+
     /**
      * Return array with name and email of data owner
      *
@@ -138,16 +140,17 @@ class Config
      */
     public function getDataOwner(): array
     {
-        if (empty($this->dataOwner)
+        if (
+            empty($this->dataOwner)
             || empty($this->dataOwner['email'])
             || empty($this->dataOwner['name'])
         ) {
             throw new ConfigException("Missing data owner details.");
         }
-        
+
         return $this->dataOwner;
     }
-    
+
     /**
      * Return bool that indicates if all records should be synced even if they dont have
      * relevant subscriptions
@@ -159,7 +162,7 @@ class Config
         if (array_key_exists('syncAll', $this->mailchimp)) {
             return filter_var($this->mailchimp['syncAll'], FILTER_VALIDATE_BOOLEAN);
         }
-        
+
         return false;
     }
 
@@ -176,7 +179,38 @@ class Config
 
         return false;
     }
-    
+
+    /**
+     * Return array of keys that should trigger an upsert to CRM when set to 'yes'
+     * If the configuration is an array, returns that array
+     * Otherwise returns an empty array (no upsert)
+     *
+     * @return array
+     */
+    public function getUpsertToCrmTriggers(): array
+    {
+        if (array_key_exists('upsertToCrmTriggers', $this->mailchimp)) {
+            $config = $this->mailchimp['upsertToCrmTriggers'];
+
+            // If it's an array, use it directly
+            if (is_array($config)) {
+                return $config;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Return bool that indicates if upserting to CRM is enabled
+     *
+     * @return bool
+     */
+    public function isUpsertToCrmEnabled(): bool
+    {
+        return !empty($this->getUpsertToCrmTriggers());
+    }
+
     /**
      * Return the default list id in Mailchimp
      *
@@ -218,14 +252,14 @@ class Config
         foreach ($this->getFieldMaps() as $map) {
             if (self::CRM_ID_KEY === $map->getCrmKey()) {
                 $keys = array_keys($map->getMailchimpDataArray());
-                
+
                 return reset($keys);
             }
         }
-        
+
         throw new ConfigException('Missing "' . self::CRM_ID_KEY . '" field.');
     }
-    
+
     /**
      * Return array with the field maps
      *
@@ -238,15 +272,15 @@ class Config
         if (!is_array($this->fields)) {
             throw new ConfigException("Fields configuration must be an array.");
         }
-        
+
         $fields = [];
         foreach ($this->fields as $config) {
             $fields[] = new FieldMapFacade($config);
         }
-        
+
         return $fields;
     }
-    
+
     /**
      * Return the field key in the crm that corresponds to the email field
      *
@@ -258,18 +292,18 @@ class Config
         if ($this->crmEmailKey) {
             return $this->crmEmailKey;
         }
-        
+
         foreach ($this->getFieldMaps() as $map) {
             if ($map->isEmail()) {
                 $this->crmEmailKey = $map->getCrmKey();
-        
+
                 return $this->crmEmailKey;
             }
         }
-    
+
         throw new ConfigException('Missing email field.');
     }
-    
+
     /**
      * Return array of the Webling group ids of the prioritized groups
      *
@@ -279,7 +313,7 @@ class Config
     {
         return $this->webling['prioritizedGroups'] ?? [];
     }
-    
+
     /**
      * Return the validation errors of this config
      *
@@ -290,10 +324,10 @@ class Config
         if (is_null($this->errors)) {
             $this->isValid();
         }
-        
+
         return $this->errors;
     }
-    
+
     /**
      * Return true, if the given config is valid
      *
@@ -309,7 +343,7 @@ class Config
             'getMailchimpKeyOfCrmId',
             'getMailchimpListId'
         ];
-        
+
         $this->errors = [];
         foreach ($methods as $method) {
             // we throw errors and catch them, because one can also change the config
@@ -321,7 +355,7 @@ class Config
                 $this->errors[] = $e->getMessage();
             }
         }
-        
+
         return empty($this->errors);
     }
 }
