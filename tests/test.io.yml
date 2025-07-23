@@ -15,6 +15,7 @@ mailchimp:
   interesstCategoriesId: de75614d35
   syncAll: false
   ignoreSubscribeThroughMailchimp: true
+  upsertToCrmTriggers: ['newsletterCountryD', 'newsletterCountryF']
 
 webling:
   prioritizedGroups:

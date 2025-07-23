@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Mail;
 class MailchimpToCrmSynchronizer
 {
     use LogTrait;
-    
+
     /**
      * Mailchimp webhook event types
      *
@@ -28,27 +28,27 @@ class MailchimpToCrmSynchronizer
     private const MC_SUBSCRIBE = 'subscribe';
     private const MC_UNSUBSCRIBE = 'unsubscribe';
     private const MC_PROFILE_UPDATE = 'profile';
-    
+
     /**
      * @var Config
      */
     private $config;
-    
+
     /**
      * @var string
      */
     private $configName;
-    
+
     /**
      * @var CrmClient
      */
     private $crmClient;
-    
+
     /**
      * @var MailChimpClient
      */
     private $mcClient;
-    
+
     /**
      * Synchronizer constructor.
      *
@@ -62,13 +62,13 @@ class MailchimpToCrmSynchronizer
     {
         $this->config = new Config($configFileName);
         $this->configName = $configFileName;
-        
+
         $crmCred = $this->config->getCrmCredentials();
-        
+
         $this->crmClient = new CrmClient($crmCred['clientId'], $crmCred['clientSecret'], $crmCred['url']);
         $this->mcClient = new MailChimpClient($this->config->getMailchimpCredentials()['apikey'], $this->config->getMailchimpListId());
     }
-    
+
     /**
      * Sync single record from mailchimp to the crm. Usually called via mailchimp webhook.
      *
@@ -83,30 +83,27 @@ class MailchimpToCrmSynchronizer
     public function syncSingle(array $mcData)
     {
         $mapper = new Mapper($this->config->getFieldMaps());
-        
+
         $email = isset($mcData['data']['new_email']) ? $mcData['data']['new_email'] : $mcData['data']['email'];
-        
+
         $callType = $mcData['type'];
         $mailchimpId = MailChimpClient::calculateSubscriberId($email);
-    
+
         $this->logWebhook('debug', $callType, $mailchimpId, "Sync single record from Mailchimp to CRM.");
-        
+
         switch ($callType) {
             case self::MC_SUBSCRIBE:
-                // if configured, don't send notifications, if not, keep backwards compatibility
-                if(!$this->config->getIgnoreSubscribeThroughMailchimp()) {
-                    $mcData = $this->mcClient->getSubscriber($email);
-                    $mergeFields = $this->extractMergeFields($mcData);
-
-                    // if there is no crm id
-                    if (empty($mergeFields[$this->config->getMailchimpKeyOfCrmId()])) {
-                        // send mail to dataOwner, that he should
-                        // add the subscriber to webling not mailchimp
+                $mcData = $this->mcClient->getSubscriber($email);
+                $crmData = $mapper->mailchimpToCrm($mcData);
+                if (empty($mergeFields[$this->config->getMailchimpKeyOfCrmId()])) {
+                    if ($this->config->isUpsertToCrmEnabled()) {
+                        $this->upsertToCrm($crmData, $email, $callType, $mailchimpId);
+                    } else if (!$this->config->getIgnoreSubscribeThroughMailchimp()) {
+                        $mergeFields = $this->extractMergeFields($mcData);
                         $this->sendMailSubscribeOnlyInWebling($this->config->getDataOwner(), $mcData);
                         $this->logWebhook('debug', $callType, $mailchimpId, "Notified data owner.");
                     }
                 }
-
                 return;
 
             case self::MC_UNSUBSCRIBE:
@@ -116,7 +113,7 @@ class MailchimpToCrmSynchronizer
                     $this->logWebhook('debug', $callType, $mailchimpId, "Record not linked to crm. No action taken.");
                     return;
                 }
-    
+
                 // get contact from crm
                 // set all subscriptions, that are configured in the currently loaded config file, to NO
                 try {
@@ -126,20 +123,20 @@ class MailchimpToCrmSynchronizer
                         $this->logWebhook('debug', $callType, $mailchimpId, "Tried to unsubscribe member, but member not found in Webling. So there is also nothing to unsubscribe. No action taken.", $crmId);
                         return;
                     }
-        
+
                     throw $e;
                 }
                 $crmData = json_decode((string)$get->getBody(), true);
                 $crmData = $this->unsubscribeAll($crmData);
                 $this->logWebhook('debug', $callType, $mailchimpId, "Unsubscribe member in crm.", $crmId);
                 break;
-            
+
             case self::MC_CLEANED_EMAIL:
                 // set email1 to invalid
                 // add note 'email set to invalid because it bounced in mailchimp'
                 if ('hard' !== $mcData['data']['reason']) {
                     $this->logWebhook('debug', $callType, $mailchimpId, "Bounce not hard. No action taken.");
-    
+
                     return;
                 }
                 $mcData = $this->mcClient->getSubscriber($email);
@@ -150,7 +147,7 @@ class MailchimpToCrmSynchronizer
                 $crmData['notesCountry'] = [['value' => $note, 'mode' => CrmValue::MODE_APPEND]];
                 $this->logWebhook('debug', $callType, $mailchimpId, "Mark email invalid in crm.", $crmId);
                 break;
-            
+
             case self::MC_PROFILE_UPDATE:
                 // get subscriber from mailchimp (so we have the interessts (groups) in a usable format)
                 // update email1, subscriptions
@@ -158,9 +155,19 @@ class MailchimpToCrmSynchronizer
                 $mergeFields = $this->extractMergeFields($mcData);
                 $crmId = $mergeFields[$this->config->getMailchimpKeyOfCrmId()];
                 $crmData = $mapper->mailchimpToCrm($mcData);
-                $this->logWebhook('debug', $callType, $mailchimpId, "Update subscriptions in crm.", $crmId);
+                // Only map to CRM data if we have a CRM ID
+
+                if (empty($crmId)) {
+                    if ($this->config->isUpsertToCrmEnabled()) {
+                        $this->upsertToCrm($crmData, $email, $callType, $mailchimpId);
+                    }
+                    return;
+                } else {
+                    $this->logWebhook('debug', $callType, $mailchimpId, "Update profile in crm.", $crmId);
+                }
+
                 break;
-            
+
             case self::MC_EMAIL_UPDATE:
                 // update email1
                 $mcData = $this->mcClient->getSubscriber($email);
@@ -170,12 +177,12 @@ class MailchimpToCrmSynchronizer
                 $crmData = [$crmValue->getKey() => [['value' => $crmValue->getValue(), 'mode' => $crmValue->getMode()]]];
                 $this->logWebhook('debug', $callType, $mailchimpId, "Update email in crm.", $crmId);
                 break;
-    
+
             default:
                 $this->logWebhook('error', $callType, $mailchimpId, __METHOD__ . " was called with an undefined webhook event.");
                 return;
         }
-    
+
         try {
             $this->crmClient->put('member/' . $crmId, $crmData);
         } catch (ClientException $e) {
@@ -185,15 +192,65 @@ class MailchimpToCrmSynchronizer
             }
             throw $e;
         }
-    
+
         $this->logWebhook('debug', $callType, $mailchimpId, "Sync successful");
     }
-    
+
     private function extractMergeFields(array $mcData)
     {
         return $mcData['merges'] ?? $mcData['merge_fields'];
     }
-    
+
+    /**
+     * Try to upsert a contact to CRM and update Mailchimp with the CRM ID
+     *
+     * @param array $crmData The CRM data to upsert
+     * @param string $email The email address of the contact
+     * @param string $callType The webhook event type
+     * @param string $mailchimpId The Mailchimp ID of the contact
+     *
+     * @return string|false The CRM ID if successful, false otherwise
+     */
+    private function upsertToCrm(array $crmData, string $email, string $callType, string $mailchimpId)
+    {
+        $triggerKeys = $this->config->getUpsertToCrmTriggers();
+        $hasSubscription = false;
+        $matchedKeys = [];
+
+        foreach ($triggerKeys as $key) {
+            if (isset($crmData[$key]) && $crmData[$key][0]['value'] === 'yes') {
+                $hasSubscription = true;
+                $matchedKeys[] = $key;
+            }
+        }
+
+        if (!$hasSubscription) {
+            $this->logWebhook('debug', $callType, $mailchimpId, "Contact does not have any of the configured newsletter subscriptions (" . implode(', ', $triggerKeys) . "). Skipping upsert to CRM.");
+            return false;
+        }
+
+        try {
+            $response = $this->crmClient->post('', $crmData);
+            $crmId = json_decode((string)$response->getBody(), true);
+
+            if (!empty($crmId)) {
+                $this->mcClient->putSubscriber([
+                    'merge_fields' => [
+                        $this->config->getMailchimpKeyOfCrmId() => $crmId
+                    ]
+                ], $email);
+                $this->logWebhook('debug', $callType, $mailchimpId, "Successfully upserted to CRM and updated Mailchimp with CRM ID.", $crmId);
+                return $crmId;
+            } else {
+                $this->logWebhook('error', $callType, $mailchimpId, "Failed to get CRM ID from upsert response.");
+                return false;
+            }
+        } catch (\Exception $e) {
+            $this->logWebhook('error', $callType, $mailchimpId, "Error upserting to CRM: " . $e->getMessage());
+            return false;
+        }
+    }
+
     /**
      * Inform data owner that he should only add contact in the crm not in mailchimp
      *
@@ -203,7 +260,7 @@ class MailchimpToCrmSynchronizer
     private function sendMailSubscribeOnlyInWebling(array $dataOwner, array $mcData)
     {
         $mergeFields = $this->extractMergeFields($mcData);
-        
+
         $mailData = new \stdClass();
         $mailData->dataOwnerName = $dataOwner['name'];
         $mailData->contactFirstName = $mergeFields['FNAME']; // todo: check if we cant get the field keys dynamically
@@ -211,11 +268,11 @@ class MailchimpToCrmSynchronizer
         $mailData->contactEmail = $mcData['email_address'];
         $mailData->adminEmail = env('ADMIN_EMAIL');
         $mailData->configName = $this->configName;
-        
+
         Mail::to($dataOwner['email'])
             ->send(new WrongSubscription($mailData));
     }
-    
+
     /**
      * Return $crmData with all subscriptions disabled
      *
@@ -231,14 +288,14 @@ class MailchimpToCrmSynchronizer
     {
         $mapper = new Mapper($this->config->getFieldMaps());
         $mcData = $mapper->crmToMailchimp($crmData);
-        
+
         foreach ($mcData[FieldMapGroup::MAILCHIMP_PARENT_KEY] as $key => $value) {
             $mcData[FieldMapGroup::MAILCHIMP_PARENT_KEY][$key] = false;
         }
-        
+
         return $mapper->mailchimpToCrm($mcData);
     }
-    
+
     /**
      * Update the email field in $crmData according to the email in $mcData
      *
@@ -254,14 +311,14 @@ class MailchimpToCrmSynchronizer
         foreach ($this->config->getFieldMaps() as $map) {
             if ($map->isEmail()) {
                 $map->addMailchimpData($mcData);
-            
+
                 return $map->getCrmData();
             }
         }
-    
+
         throw new ConfigException('No field of type "email"');
     }
-    
+
     private function logWebhook(string $method, string $webhook, string $record, string $message, int $crmId = -1)
     {
         $crmIdParam = $crmId >= 0 ? " crmId=\"$crmId\" " : " ";
