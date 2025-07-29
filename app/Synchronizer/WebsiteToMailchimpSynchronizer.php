@@ -106,6 +106,9 @@ class WebsiteToMailchimpSynchronizer
         if (isset($websiteData['notesCountry'])) {
             $tags[] = $websiteData['notesCountry'];
         }
+        if(isset($mailchimpData['tags']) && is_array($mailchimpData['tags'])) {
+            $tags = array_merge($tags, $mailchimpData['tags']);
+        }
         $this->mailchimpClient->addTagsToSubscriber($response['id'], $tags);
 
         return $response;
