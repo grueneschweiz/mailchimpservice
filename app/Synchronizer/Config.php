@@ -17,6 +17,7 @@ class Config
     private $auth;
     private $dataOwner;
     private $mailchimp;
+    private $mailchimpToCrm;
     private $errors;
     private $crmEmailKey;
     private $webling;
@@ -73,6 +74,13 @@ class Config
             $this->mailchimp = $config['mailchimp'];
         } else {
             throw new ConfigException("Missing 'mailchimp' section.");
+        }
+
+        if ($config['mailchimpToCrm']) {
+            $this->mailchimpToCrm = $config['mailchimpToCrm'];
+            $this->mailchimpToCrm['isUpsertToCrmEnabled'] = true;
+        } else {
+            $this->mailchimpToCrm['isUpsertToCrmEnabled'] = false;
         }
 
         if ($config['fields']) {
@@ -181,37 +189,6 @@ class Config
     }
 
     /**
-     * Return array of keys that should trigger an upsert to CRM when set to 'yes'
-     * If the configuration is an array, returns that array
-     * Otherwise returns an empty array (no upsert)
-     *
-     * @return array
-     */
-    public function getUpsertToCrmTriggers(): array
-    {
-        if (array_key_exists('upsertToCrmTriggers', $this->mailchimp)) {
-            $config = $this->mailchimp['upsertToCrmTriggers'];
-
-            // If it's an array, use it directly
-            if (is_array($config)) {
-                return $config;
-            }
-        }
-
-        return [];
-    }
-
-    /**
-     * Return bool that indicates if upserting to CRM is enabled
-     *
-     * @return bool
-     */
-    public function isUpsertToCrmEnabled(): bool
-    {
-        return !empty($this->getUpsertToCrmTriggers());
-    }
-
-    /**
      * Return the default list id in Mailchimp
      *
      * @return string the list id
@@ -225,20 +202,6 @@ class Config
         }
 
         return $this->mailchimp['listId'];
-    }
-
-    /**
-     * Return the tag that should be added to new subscribers
-     *
-     * @return string
-     */
-    public function getNewTag(): string
-    {
-        if (empty($this->mailchimp['newtag'])) {
-            return 'new';
-        }
-
-        return $this->mailchimp['newtag'];
     }
 
     /**
@@ -357,5 +320,106 @@ class Config
         }
 
         return empty($this->errors);
+    }
+
+    /**
+     * Get language tags from the config
+     *
+     * @return array List of language tag names
+     */
+    public function getLanguageTagsFromConfig(): array
+    {
+        $languageTags = [];
+        $fieldMaps = $this->getFieldMaps();
+
+        foreach ($fieldMaps as $fieldMap) {
+            if (
+                $fieldMap->getMailchimpParentKey() === 'tags' &&
+                $fieldMap->canSyncToMailchimp() &&
+                $fieldMap->getCrmKey() === 'language'
+            ) {
+                $mailchimpData = $fieldMap->getMailchimpDataArray();
+                foreach ($mailchimpData as $tagName => $value) {
+                    $languageTags[] = $tagName;
+                }
+            }
+        }
+
+        return $languageTags;
+    }
+
+    /**
+     * Return bool that indicates if upserting to CRM is enabled
+     *
+     * @return bool
+     */
+    public function isUpsertToCrmEnabled(): bool
+    {
+        return !empty($this->mailchimpToCrm['isUpsertToCrmEnabled']);
+    }
+
+    /**
+     * Return the tag that should be added to new subscribers
+     *
+     * @return string
+     */
+    public function getNewTag(): string
+    {
+        if (empty($this->mailchimpToCrm['newtag'])) {
+            throw new ConfigException('Missing "newtag" field.');
+        }
+
+        return $this->mailchimpToCrm['newtag'];
+    }
+    /**
+     * Return array of keys that should trigger an upsert to CRM when set to 'yes'
+     * If the configuration is an array, returns that array
+     * Otherwise returns an empty array (no upsert)
+     *
+     * @return array
+     */
+    public function getInterestsToSync(): array
+    {
+        if (array_key_exists('interestsToSync', $this->mailchimpToCrm)) {
+            $config = $this->mailchimpToCrm['interestsToSync'];
+
+            if (is_array($config)) {
+                return $config;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Return configurable field that is used to determine if a member should be synced
+     *
+     * @return string
+     *
+     * @throws ConfigException
+     */
+    public function getSyncCriteriaField(): string
+    {
+        if (empty($this->mailchimpToCrm['syncCriteriaField'])) {
+            throw new ConfigException('Missing "syncCriteriaField" field.');
+        }
+
+        return $this->mailchimpToCrm['syncCriteriaField'];
+    }
+
+    /**
+     * Return configurable threshold used together with syncCriteriaField.
+     *
+     * @return int
+     *
+     * @throws ConfigException
+     */
+    public function getSyncCriteriaThreshold(): int
+    {
+        if (empty($this->mailchimpToCrm['syncCriteriaThreshold'])) {
+            throw new ConfigException('Missing "syncCriteriaThreshold" field.');
+        }
+
+        return $this->mailchimpToCrm['syncCriteriaThreshold'];
     }
 }

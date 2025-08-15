@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-class MailchimpToCrmSynchronizerTest extends TestCase
+class MailchimpToCrmWebhookSynchronizerTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -32,7 +32,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
     private $mcClientTesting;
 
     /**
-     * @var MailchimpToCrmSynchronizer
+     * @var MailchimpToCrmWebhookSynchronizer
      */
     private $sync;
 
@@ -60,7 +60,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $auth->save();
 
         // get synchronizer
-        $sync = new \ReflectionClass(MailchimpToCrmSynchronizer::class);
+        $sync = new \ReflectionClass(MailchimpToCrmWebhookSynchronizer::class);
         $this->sync = $sync->newInstanceWithoutConstructor();
 
         $configName = new \ReflectionProperty($this->sync, 'configName');
@@ -85,7 +85,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $this->mockCrmResponse([new Response(200)]);
     }
 
-    public function testSyncSingle__subscribe()
+    public function testHandleMailchimpUpdate__subscribe()
     {
         // config
         Mail::fake();
@@ -127,7 +127,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         if ($this->config->getIgnoreSubscribeThroughMailchimp()) {
             Mail::assertNotSent(WrongSubscription::class);
@@ -149,7 +149,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
     }
 
 
-    public function testSyncSingle__subscribe__withMerges()
+    public function testHandleMailchimpUpdate__subscribe__withMerges()
     {
         // config
         Mail::fake();
@@ -190,7 +190,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         if ($this->config->getIgnoreSubscribeThroughMailchimp()) {
             Mail::assertNotSent(WrongSubscription::class);
@@ -211,7 +211,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $this->mcClientTesting->deleteSubscriber($email);
     }
 
-    public function testSyncSingle__unsubscribe()
+    public function testHandleMailchimpUpdate__unsubscribe()
     {
         // config
         $email = Str::random() . '@mymail.com';
@@ -236,10 +236,13 @@ class MailchimpToCrmSynchronizerTest extends TestCase
                     'WEBLINGID' => (string)$crmId,
                     'BIRTHDAY' => '2022-08-22'
                 ],
+                'tags' => [
+                    'name' => 'Deutsch'
+                ]
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         /** @var Request $put */
         $put = $this->crmRequestHistory[1]['request'];
@@ -298,11 +301,12 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             'notesCountry' => 'Go to hell',
             'firstLevelGroupNames' => 'BE',
             'recordCategory' => 'media',
+            'language' => 'd',
             'id' => (string)$crmId,
         ];
     }
 
-    public function testSyncSingle__bounced()
+    public function testHandleMailchimpUpdate__bounced()
     {
         $email = Str::random() . '@mymail.com';
         $crmId = random_int(10 ** 6, 10 ** 7);
@@ -343,7 +347,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
@@ -359,7 +363,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $this->mcClientTesting->deleteSubscriber($email);
     }
 
-    public function testSyncSingle__profileUpdate()
+    public function testHandleMailchimpUpdate__profileUpdate()
     {
         // config
         $email = Str::random() . '@mymail.com';
@@ -408,7 +412,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
@@ -428,7 +432,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
         $this->mcClientTesting->deleteSubscriber($email);
     }
 
-    public function testSyncSingle__emailUpdate()
+    public function testHandleMailchimpUpdate__emailUpdate()
     {
         // config
         $email = Str::random() . '@mymail.com';
@@ -471,7 +475,7 @@ class MailchimpToCrmSynchronizerTest extends TestCase
             ],
         ];
 
-        $this->sync->syncSingle($webhookData);
+        $this->sync->handleMailchimpUpdate($webhookData);
 
         /** @var Request $put */
         $put = $this->crmRequestHistory[0]['request'];
@@ -479,197 +483,5 @@ class MailchimpToCrmSynchronizerTest extends TestCase
 
         $this->assertEquals("member/$crmId", $put->getUri()->getPath());
         $this->assertEquals($newEmail, $data['email1'][0]['value']);
-    }
-
-    public function testSyncSingle__subscribe__withUpsertToCrm()
-    {
-        // config
-        Mail::fake();
-        $email = Str::random() . '@mymail.com';
-        $crmId = 123456;
-
-        // precondition
-        $this->mockCrmResponse([
-            new Response(200, [], json_encode($crmId))
-        ]);
-
-        // Create subscriber with newsletterCountryD set to 'yes'
-        $subscriber = [
-            'email_address' => $email,
-            'merge_fields' => [
-                'FNAME' => 'First Name',
-                'LNAME' => 'Last Name',
-                'GENDER' => 'n',
-                'WEBLINGID' => '', // No CRM ID initially
-            ],
-            'interests' => [
-                '55f795def4' => true, // This is newsletterCountryD set to true
-                '1851be732e' => false,
-                '294df36247' => false,
-                '633e3c8dd7' => false,
-                'bba5d2d564' => false,
-            ],
-            'tags' => [],
-        ];
-
-        $this->mcClientTesting->putSubscriber($subscriber);
-
-        // test
-        $webhookData = [
-            'type' => 'subscribe',
-            'data' => [
-                'email' => $email,
-                'merge_fields' => [
-                    'EMAIL' => $email,
-                    'FNAME' => 'First Name',
-                    'LNAME' => 'Last Name',
-                    'GENDER' => 'n',
-                    'WEBLINGID' => '',
-                ],
-            ],
-        ];
-
-        $this->sync->syncSingle($webhookData);
-
-        // assert
-        $this->assertCount(1, $this->crmRequestHistory);
-
-        /** @var Request $request */
-        $request = $this->crmRequestHistory[0]['request'];
-        $this->assertEquals('POST', $request->getMethod());
-        $this->assertEquals('', $request->getUri()->getPath());
-
-        $body = json_decode((string)$request->getBody(), true);
-        $this->assertEquals($email, $body['email1'][0]['value']);
-        $this->assertEquals('yes', $body['newsletterCountryD'][0]['value']);
-
-        // No email should be sent since we're handling it with upsert
-        Mail::assertNotSent(WrongSubscription::class);
-
-        // cleanup
-        $this->mcClientTesting->deleteSubscriber($email);
-    }
-
-    public function testSyncSingle__profileUpdate__withUpsertToCrm()
-    {
-        // config
-        $email = Str::random() . '@mymail.com';
-        $crmId = 123456;
-
-        // precondition
-        $this->mockCrmResponse([
-            new Response(200, [], json_encode($crmId))
-        ]);
-
-        // Create subscriber with newsletterCountryF set to 'yes' (second trigger in our config)
-        $subscriber = [
-            'email_address' => $email,
-            'merge_fields' => [
-                'FNAME' => 'First Name',
-                'LNAME' => 'Last Name',
-                'GENDER' => 'n',
-                'WEBLINGID' => '', // No CRM ID initially
-            ],
-            'interests' => [
-                '55f795def4' => false, // newsletterCountryD is false
-                '1851be732e' => true,  // This is newsletterCountryF set to true
-                '294df36247' => false,
-                '633e3c8dd7' => false,
-                'bba5d2d564' => false,
-            ],
-            'tags' => [],
-        ];
-
-        $this->mcClientTesting->putSubscriber($subscriber);
-
-        // test
-        $webhookData = [
-            'type' => 'profile',
-            'data' => [
-                'email' => $email,
-                'merge_fields' => [
-                    'EMAIL' => $email,
-                    'FNAME' => 'First Name',
-                    'LNAME' => 'Last Name',
-                    'GENDER' => 'n',
-                    'WEBLINGID' => '',
-                ],
-            ],
-        ];
-
-        $this->sync->syncSingle($webhookData);
-
-        // assert
-        $this->assertCount(1, $this->crmRequestHistory);
-
-        /** @var Request $request */
-        $request = $this->crmRequestHistory[0]['request'];
-        $this->assertEquals('POST', $request->getMethod());
-        $this->assertEquals('', $request->getUri()->getPath());
-
-        $body = json_decode((string)$request->getBody(), true);
-        $this->assertEquals($email, $body['email1'][0]['value']);
-        $this->assertEquals('yes', $body['newsletterCountryF'][0]['value']);
-
-        // cleanup
-        $this->mcClientTesting->deleteSubscriber($email);
-    }
-
-    public function testSyncSingle__profileUpdate__withUpsertDisabled()
-    {
-        // config
-        $email = Str::random() . '@mymail.com';
-
-        // Temporarily disable upsert to CRM
-        $configReflection = new \ReflectionObject($this->config);
-        $mailchimpProperty = $configReflection->getProperty('mailchimp');
-        $mailchimpProperty->setAccessible(true);
-        $mailchimpConfig = $mailchimpProperty->getValue($this->config);
-        $mailchimpConfig['upsertToCrmTriggers'] = [];
-        $mailchimpProperty->setValue($this->config, $mailchimpConfig);
-
-        // Create subscriber with newsletterCountryD set to 'yes'
-        $subscriber = [
-            'email_address' => $email,
-            'merge_fields' => [
-                'FNAME' => 'First Name',
-                'LNAME' => 'Last Name',
-                'GENDER' => 'n',
-                'WEBLINGID' => '', // No CRM ID
-            ],
-            'interests' => [
-                '55f795def4' => true, // This is newsletterCountryD set to true
-                '1851be732e' => false,
-                '294df36247' => false,
-                '633e3c8dd7' => false,
-                'bba5d2d564' => false,
-            ],
-            'tags' => [],
-        ];
-
-        $this->mcClientTesting->putSubscriber($subscriber);
-
-        // test
-        $webhookData = [
-            'type' => 'profile',
-            'data' => [
-                'email' => $email,
-                'merge_fields' => [
-                    'EMAIL' => $email,
-                    'FNAME' => 'First Name',
-                    'LNAME' => 'Last Name',
-                    'GENDER' => 'n',
-                    'WEBLINGID' => '',
-                ],
-            ],
-        ];
-
-        $this->sync->syncSingle($webhookData);
-
-        // assert - no CRM requests should be made
-        $this->assertCount(0, $this->crmRequestHistory);
-
-        // cleanup
-        $this->mcClientTesting->deleteSubscriber($email);
     }
 }

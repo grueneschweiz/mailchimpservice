@@ -12,10 +12,16 @@ dataOwner:
 
 mailchimp:
   listId: 6f33e28fa3
-  interesstCategoriesId: de75614d35
   syncAll: false
   ignoreSubscribeThroughMailchimp: true
-  upsertToCrmTriggers: ['newsletterCountryD', 'newsletterCountryF']
+
+mailchimpToCrm:
+  syncCriteriaField: tags_count
+  syncCriteriaThreshold: 2
+  interestsToSync:
+    - 55f795def4 #DE
+    - 1851be732e #FR
+  newtag: New
 
 webling:
   prioritizedGroups:
@@ -71,6 +77,24 @@ fields:
     trueContainsString: PolitletterDE
     falseContainsString: PolitletterUnsubscribed
     sync: both
+  - crmKey: language
+    mailchimpTagName: Deutsch
+    type: tag
+    conditions:
+      - d
+    sync: toMailchimp
+  - crmKey: language
+    mailchimpTagName: Française
+    type: tag
+    conditions:
+      - f
+    sync: toMailchimp
+  - crmKey: language
+    mailchimpTagName: Italiano
+    type: tag
+    conditions:
+      - i
+    sync: toMailchimp
   - crmKey: memberStatusCountry
     mailchimpTagName: member
     type: tag
