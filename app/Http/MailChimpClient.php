@@ -431,17 +431,11 @@ class MailChimpClient
      * @return array|false
      * @throws MailchimpClientException
      */
-    public function updateSubscriberInterests(string $subscriberId, array $mergeFields, string $interestId)
+    public function updateMergeFields(string $subscriberId, array $mergeFields)
     {
         $data = [
             'merge_fields' => $mergeFields,
         ];
-
-        if (!empty($interestId)) {
-            $data['interests'] = [
-                $interestId => true
-            ];
-        }
 
         $patch = $this->client->patch("lists/{$this->listId}/members/$subscriberId", $data, self::API_WRITE_TIMEOUT);
 

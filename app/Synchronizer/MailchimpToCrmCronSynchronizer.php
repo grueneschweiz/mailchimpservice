@@ -5,6 +5,7 @@ namespace App\Synchronizer;
 use App\Http\MailChimpClient;
 use App\Exceptions\ConfigException;
 use App\Synchronizer\LogTrait;
+use Psr\Http\Message\ResponseInterface;
 
 // Example member data from getListMembers():
 // "{"email_address":"test@example.com",
@@ -38,8 +39,8 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
     private array $languageTags;
     private string $mailchimpKeyOfCrmId;
-    private string $syncCriteriaField;
-    private int $syncCriteriaThreshold;
+    private int $groupForNewMembers;
+    private array $interestsToSync;
 
     public function __construct(string $configFileName)
     {
@@ -51,8 +52,12 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
         $this->languageTags = $this->config->getLanguageTagsFromConfig();
         $this->mailchimpKeyOfCrmId = $this->config->getMailchimpKeyOfCrmId();
-        $this->syncCriteriaField = $this->config->getSyncCriteriaField();
-        $this->syncCriteriaThreshold = $this->config->getSyncCriteriaThreshold();
+        $this->groupForNewMembers = $this->config->getGroupForNewMembers();
+
+        $this->interestsToSync = $this->config->getInterestsToSync();
+        if (empty($this->interestsToSync)) {
+            throw new ConfigException('No interests configured for sync. Please configure it in the config file.');
+        }
     }
 
     /**
@@ -92,7 +97,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
                     $emailForLog = $member['email_address'] ?? '(no email)';
                     $this->log('info', "Processing member " . $emailForLog);
-                    $this->log('info', "Member data: " . json_encode($member));
                     try {
                         $filterResult = $this->filterSingle($member);
                         if (!$filterResult) {
@@ -102,8 +106,10 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
                         $syncResult = $this->syncSingle($member);
                         if ($syncResult) {
+                            $this->log('info', "Member {$member['email_address']} sync to Crm was successful.");
                             $totalSuccess++;
                         } else {
+                            $this->log('info', "Member {$member['email_address']} sync to Crm has failed.");
                             $totalFailed++;
                         }
                     } catch (\Exception $e) {
@@ -157,9 +163,16 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
             return false;
         }
 
-        $syncCriteriaValue = $member[$this->syncCriteriaField] ?? 0;
-        if ($syncCriteriaValue <= $this->syncCriteriaThreshold) {
-            $this->log('debug', "Member " . $member['email_address'] . " doesnt meet the sync criteria: " . $syncCriteriaValue . ". Skipping.");
+        $hasNewsletter = false;
+        $memberInterests = $member['interests'] ?? [];
+        foreach ($this->interestsToSync as $interestId) {
+            if (isset($memberInterests[$interestId]) && $memberInterests[$interestId] === true) {
+                $hasNewsletter = true;
+                break;
+            }
+        }
+        if (!$hasNewsletter) {
+            $this->log('debug', "Member " . $member['email_address'] . " has no newsletter interests set. Skipping.");
             return false;
         }
 
@@ -191,9 +204,9 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
     public function syncSingle(array $member): bool
     {
         try {
-            $crmData = $this->mapper->mailchimpToCrm($member);
-            $member['entryChannel'] = 'Mailchimp import ' . date('Y-m-d H:i:s');
-            //TODO MSC add newsletter subscription for crm
+            $crmData = $this->mapper->mailchimpToCrm($member, true);
+            $crmData = $this->addCustomMapping($crmData, $member);
+
             $mailchimpId = MailChimpClient::calculateSubscriberId($member['email_address']);
             $crmId = $this->upsertToCrm($crmData, $member, 'daily_sync', $mailchimpId);
 
@@ -205,6 +218,42 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
     }
 
     /**
+     * Add custom CRM data to the mapped data
+     *
+     * @param array $crmData The mapped CRM data
+     * @param array $member The member data from Mailchimp
+     *
+     * @return array The CRM data with custom fields added
+     *
+     * @throws \Exception
+     */
+    private function addCustomMapping(array $crmData, array $member): array
+    {
+        $crmData['entryChannel'] = [
+            'value' => 'Mailchimp import ' . date('Y-m-d H:i:s'),
+            'mode' => 'replaceEmpty'
+        ];
+        $crmData['groups'] = [
+            'value' => (string) $this->groupForNewMembers,
+            'mode' => 'append'
+        ];
+
+        $languageTag = $this->determineLanguageFromTags($member);
+        if ($languageTag) {
+            $crmData['language'] = [
+                'value' => $languageTag,
+                'mode' => 'replaceEmpty'
+            ];
+        }
+
+        // remove empty WEBLINGID from CRM data
+        if (isset($crmData['id'])) {
+            unset($crmData['id']);
+        }
+        return $crmData;
+    }
+
+    /**
      * Return the interest filter parameters for the list members request
      */
     private function getRequestFilterParams(): array
@@ -212,8 +261,9 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
         $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $params = [
             'status' => 'subscribed',
-            'since_last_changed' => $nowUtc->modify('-6 months')->format(DATE_ATOM),
-            'since_timestamp_opt' => $nowUtc->modify('-4 months')->format(DATE_ATOM),
+            'since_last_changed' => $nowUtc->modify('-' . $this->config->getChangedWithinMonths() . ' months')->format(DATE_ATOM),
+            // Only include subscribers whose opt-in is older than the specified months
+            'before_timestamp_opt' => $nowUtc->modify('-' . $this->config->getOptInOlderThanMonths() . ' months')->format(DATE_ATOM),
         ];
 
         $defaultFields = [
@@ -222,7 +272,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
             'members.status',
             'members.tags',
             'members.id',
-            'members.' . $this->syncCriteriaField,
             'members.interests'
         ];
         $params['fields'] = implode(',', $defaultFields);
@@ -244,11 +293,11 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
     private function upsertToCrm(array $crmData, array $member, string $callType, string $mailchimpId)
     {
         try {
-            $response = $this->crmClient->post('/contacts', $crmData);
-            if (isset($response['id']) && $response['id']) {
-                $crmId = $response['id'];
-                $this->updateMailchimpWithCrmId($crmId, $member, $mailchimpId);
-                $this->logWebhook('debug', $callType, $mailchimpId, "Successfully upserted to CRM and updated Mailchimp with CRM ID.", $crmId);
+            $response = $this->crmClient->post('/api/v1/member', $crmData);
+            $crmId = (string) json_decode((string) $response->getBody(), true);
+
+            if (!empty($crmId)) {
+                $this->updateMailchimpWithCrmId($crmId, $mailchimpId);
                 return $crmId;
             } else {
                 $this->logWebhook('error', $callType, $mailchimpId, "Failed to get CRM ID from upsert response.");
@@ -264,28 +313,12 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
      * Update Mailchimp with the CRM ID
      *
      * @param string $crmId The CRM ID to update
-     * @param array $member Optional member data if already available
      */
-    private function updateMailchimpWithCrmId(string $crmId, array $member, string $mailchimpId): void
+    private function updateMailchimpWithCrmId(string $crmId, string $mailchimpId): void
     {
-        /*
-        // TODO MSC
-        $languageTag = $this->determineLanguageFromTags(['tags' => $member['tags']]);
-        $interestsToSync = $this->config->getInterestsToSync();
-
-        $interestId = reset($interestsToSync);
-
-        for ($i = 0; $i < count($this->languageTags); $i++) {
-            if ($languageTag === $this->languageTags[$i] && isset($interestsToSync[$i])) {
-                $interestId = $interestsToSync[$i];
-                break;
-            }
-        }*/
-
-        $this->mcClient->updateSubscriberInterests(
+        $this->mcClient->updateMergeFields(
             $mailchimpId,
-            [$this->config->getMailchimpKeyOfCrmId() => $crmId],
-            '' //$interestId
+            [$this->config->getMailchimpKeyOfCrmId() => $crmId]
         );
 
         $this->mcClient->removeTagFromSubscriber($mailchimpId, $this->config->getNewTag());
@@ -311,7 +344,8 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
             $tagName = $tag['name'];
             if (in_array($tagName, $this->languageTags)) {
-                return $tagName;
+                // e.g. Deutsch -> "d", Francais -> "f", Italiano -> "i"
+                return strtolower(substr($tagName, 0, 1));
             }
         }
 

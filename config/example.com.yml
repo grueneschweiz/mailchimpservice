@@ -16,12 +16,13 @@ mailchimp:
   ignoreSubscribeThroughMailchimp: true
 
 mailchimpToCrm:
-  syncCriteriaField: tags_count # pick your criteria
-  syncCriteriaThreshold: 2 # pick your threshold
   interestsToSync: #order corresponds to language order in config
     - 55f795def4
     - 1851be732e
   newtag: New
+  changedWithinMonths: 6
+  optInOlderThanMonths: 2
+  groupForNewMembers: 7654321 #could be one of the prioritizedGroups
 
 webling:
   prioritizedGroups:

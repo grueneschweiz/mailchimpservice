@@ -22,6 +22,7 @@ mailchimpToCrm:
     - 55f795def4 #DE
     - 1851be732e #FR
   newtag: New
+  groupForNewMembers: 7654321
 
 webling:
   prioritizedGroups:

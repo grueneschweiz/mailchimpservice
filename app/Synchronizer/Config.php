@@ -338,8 +338,17 @@ class Config
                 $fieldMap->canSyncToMailchimp() &&
                 $fieldMap->getCrmKey() === 'language'
             ) {
-                $mailchimpData = $fieldMap->getMailchimpDataArray();
-                foreach ($mailchimpData as $tagName => $value) {
+                $reflection = new \ReflectionObject($fieldMap);
+                $property = $reflection->getProperty('field');
+                $property->setAccessible(true);
+                $field = $property->getValue($fieldMap);
+
+                $tagReflection = new \ReflectionObject($field);
+                $tagNameProperty = $tagReflection->getProperty('mailchimpTagName');
+                $tagNameProperty->setAccessible(true);
+                $tagName = $tagNameProperty->getValue($field);
+
+                if (!empty($tagName)) {
                     $languageTags[] = $tagName;
                 }
             }
@@ -392,34 +401,36 @@ class Config
     }
 
     /**
-     * Return configurable field that is used to determine if a member should be synced
+     * Return the number of months to consider for the changed within filter
      *
-     * @return string
-     *
-     * @throws ConfigException
+     * @return int
      */
-    public function getSyncCriteriaField(): string
+    public function getChangedWithinMonths(): int
     {
-        if (empty($this->mailchimpToCrm['syncCriteriaField'])) {
-            throw new ConfigException('Missing "syncCriteriaField" field.');
-        }
-
-        return $this->mailchimpToCrm['syncCriteriaField'];
+        return $this->mailchimpToCrm['changedWithinMonths'] ?? 6;
     }
 
     /**
-     * Return configurable threshold used together with syncCriteriaField.
+     * Return the number of months to consider for the opt-in older than filter
      *
      * @return int
-     *
-     * @throws ConfigException
      */
-    public function getSyncCriteriaThreshold(): int
+    public function getOptInOlderThanMonths(): int
     {
-        if (empty($this->mailchimpToCrm['syncCriteriaThreshold'])) {
-            throw new ConfigException('Missing "syncCriteriaThreshold" field.');
+        return $this->mailchimpToCrm['optInOlderThanMonths'] ?? 2;
+    }
+
+    /**
+     * Return the group where new people should be added in the crm
+     *
+     * @return int
+     */
+    public function getGroupForNewMembers(): int
+    {
+        if (empty($this->mailchimpToCrm['groupForNewMembers'])) {
+            throw new ConfigException('Missing "groupForNewMembers" field.');
         }
 
-        return $this->mailchimpToCrm['syncCriteriaThreshold'];
+        return $this->mailchimpToCrm['groupForNewMembers'];
     }
 }

@@ -91,17 +91,15 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $mailchimpKeyOfCrmIdProp->setAccessible(true);
         $mailchimpKeyOfCrmIdProp->setValue($this->sync, $this->config->getMailchimpKeyOfCrmId());
 
-        // Initialize sync criteria properties since we bypassed the constructor
-        if (property_exists($this->sync, 'syncCriteriaField')) {
-            $syncCriteriaFieldProp = new \ReflectionProperty($this->sync, 'syncCriteriaField');
-            $syncCriteriaFieldProp->setAccessible(true);
-            $syncCriteriaFieldProp->setValue($this->sync, $this->config->getSyncCriteriaField());
-        }
-        if (property_exists($this->sync, 'syncCriteriaThreshold')) {
-            $syncCriteriaThresholdProp = new \ReflectionProperty($this->sync, 'syncCriteriaThreshold');
-            $syncCriteriaThresholdProp->setAccessible(true);
-            $syncCriteriaThresholdProp->setValue($this->sync, $this->config->getSyncCriteriaThreshold());
-        }
+        // Initialize groupForNewMembers since we bypassed the constructor
+        $groupForNewMembersProp = new \ReflectionProperty($this->sync, 'groupForNewMembers');
+        $groupForNewMembersProp->setAccessible(true);
+        $groupForNewMembersProp->setValue($this->sync, $this->config->getGroupForNewMembers());
+
+        // Initialize interestsToSync property
+        $interestsToSyncProp = new \ReflectionProperty($this->sync, 'interestsToSync');
+        $interestsToSyncProp->setAccessible(true);
+        $interestsToSyncProp->setValue($this->sync, ['55f795def4', '1851be732e']);
 
         // Set up a default mock CRM client for all tests
         // This prevents 'Call to a member function post() on null' errors
@@ -114,36 +112,36 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $crmClient = $sync->getProperty('crmClient');
         $crmClient->setAccessible(true);
 
-        // Create a mock CRM client that returns arrays instead of Response objects
+        // Create a mock CRM client that returns ResponseInterface objects
         $mockClient = $this->createMock(CrmClient::class);
 
-        // Configure the mock to return array responses for post method
+        // Configure the mock to return ResponseInterface objects for post method
         $mockClient->method('post')
             ->willReturnCallback(function ($endpoint, $data) use ($responses) {
                 static $callCount = 0;
 
                 if (!isset($responses[$callCount])) {
-                    return ['id' => '12345']; // Default response
+                    // Default response as a Response object
+                    return new Response(200, [], json_encode(['id' => '12345']));
                 }
 
                 $response = $responses[$callCount++];
 
+                // If it's already a Response object, return it directly
                 if ($response instanceof Response) {
                     if ($response->getStatusCode() >= 400) {
                         throw new \Exception('Server Error: ' . $response->getStatusCode());
                     }
-                    $body = $response->getBody()->getContents();
-                    $decoded = json_decode($body, true);
-                    if (is_array($decoded)) {
-                        return $decoded;
-                    }
-                    if (is_scalar($decoded) && $decoded !== null && $decoded !== '') {
-                        return ['id' => (string)$decoded];
-                    }
-                    return ['id' => '12345'];
+                    return $response;
                 }
 
-                return $response;
+                // If it's an array, convert it to a Response object
+                if (is_array($response)) {
+                    return new Response(200, [], json_encode($response));
+                }
+
+                // For any other type, convert to a Response with the value as body
+                return new Response(200, [], json_encode($response));
             });
 
         $crmClient->setValue($this->sync, $mockClient);
@@ -307,11 +305,11 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $mapperProperty->setValue($this->sync, $mapperMock);
 
         // Mock the CRM client to return a valid response
-        $this->mockCrmResponse([['id' => '12345']]);
+        $this->mockCrmResponse([new Response(200, [], json_encode(12345))]);
 
         // Mock the MailChimpClient to avoid actual API calls
         $mcClientMock = $this->createMock(MailChimpClient::class);
-        $mcClientMock->method('updateSubscriberInterests')->willReturn(true);
+        $mcClientMock->method('updateMergeFields')->willReturn(true);
         $mcClientMock->method('removeTagFromSubscriber')->willReturn(true);
         $mcClientMock->method('calculateSubscriberId')->willReturn('abc123');
 
@@ -388,14 +386,14 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
                 [
                     'email_address' => 'test1@example.com',
                     'tags_count' => 4,
-                    'merge_fields' => ['FNAME' => 'Test1', 'LNAME' => 'User1'],
+                    'merge_fields' => ['FNAME' => 'Test1', 'LNAME' => 'User1', 'GENDER' => 'm', 'NOTES' => '', 'WEBLINGID' => '', 'BIRTHDAY' => ''],
                     'tags' => [['name' => 'New']],
                     'interests' => self::DEFAULT_INTEREST_MATCHINGS
                 ],
                 [
                     'email_address' => 'test2@example.com',
                     'tags_count' => 5,
-                    'merge_fields' => ['FNAME' => 'Test2', 'LNAME' => 'User2'],
+                    'merge_fields' => ['FNAME' => 'Test2', 'LNAME' => 'User2', 'GENDER' => 'f', 'NOTES' => '', 'WEBLINGID' => '', 'BIRTHDAY' => ''],
                     'tags' => [['name' => 'New']],
                     'interests' => self::DEFAULT_INTEREST_MATCHINGS
                 ]
@@ -448,7 +446,7 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $determineMethod->setAccessible(true);
         $result = $determineMethod->invoke($this->sync, $tags);
 
-        $this->assertEquals('Deutsch', $result);
+        $this->assertEquals('d', $result);
     }
 
     public function testDetermineLanguageFromTags_WithFrenchTag_ReturnsFrench()
@@ -466,7 +464,7 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $determineMethod->setAccessible(true);
         $result = $determineMethod->invoke($this->sync, $tags);
 
-        $this->assertEquals('Française', $result);
+        $this->assertEquals('f', $result);
     }
 
     public function testDetermineLanguageFromTags_WithNoLanguageTag_ReturnsNull()
@@ -505,8 +503,8 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $mailchimpToCrmProperty->setValue($this->config, []);
 
         $this->mockCrmResponse([
-            ['id' => 12345],
-            ['id' => 12346]
+            new Response(200, [], json_encode(12345)),
+            new Response(200, [], json_encode(12346))
         ]);
 
         $result = $this->sync->syncAll(10, 0);
