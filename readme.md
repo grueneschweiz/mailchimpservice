@@ -35,12 +35,16 @@ and start contributing 😍.
 - Execute Laravel CLI commands (enter container): `docker exec -it wsapp_mailchimp bash` use `exit` to escape the
   container.
   - add your first entry `php artisan endpoint:add myconfigfile.yml`
-  - sync an instance `php artisan sync:all toMailchimp myconfigfile.yml --limit=10`
+  - sync an instance from crm to mailchimp `php artisan sync:all toMailchimp myconfigfile.yml --limit=10 --offset=130`
+  - sync an instance from mailchimp to crm `php artisan sync:all toCrm myconfigfile.yml --limit=100 --max=7000`
 
 - Add dependency using composer: `docker compose run app composer require DEPENDENCY`
 
 ### Testing
-In the main folder run `php vendor/phpunit/phpunit/phpunit tests` to run the tests locally.
+In the main folder run `php vendor/phpunit/phpunit/phpunit tests` to run the tests locally. Or let it run in the container:
+```bash
+$ docker exec -it wsapp_mailchimp bash -c "php vendor/phpunit/phpunit/phpunit ./tests/Unit/Synchronizer/MailchimpToCrmWebhookSynchronizerTest.php --filter=testHandleMailchimpUpdate__unsubscribe"
+```
 
 ### Tooling
 #### Mailhog
