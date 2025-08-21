@@ -95,8 +95,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
                 foreach ($members as $member) {
                     $totalProcessed++;
 
-                    $emailForLog = $member['email_address'] ?? '(no email)';
-                    $this->log('info', "Processing member " . $emailForLog);
                     try {
                         $filterResult = $this->filterSingle($member);
                         if (!$filterResult) {
@@ -106,10 +104,10 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
 
                         $syncResult = $this->syncSingle($member);
                         if ($syncResult) {
-                            $this->log('info', "Member {$member['email_address']} sync to Crm was successful.");
+                            $this->log('debug', "Member {$member['email_address']} sync to Crm was successful.");
                             $totalSuccess++;
                         } else {
-                            $this->log('info', "Member {$member['email_address']} sync to Crm has failed.");
+                            $this->log('debug', "Member {$member['email_address']} sync to Crm has failed.");
                             $totalFailed++;
                         }
                     } catch (\Exception $e) {
@@ -134,7 +132,7 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
             }
         }
 
-        $this->log('info', "Completed Mailchimp to CRM synchronization: $totalProcessed processed, $totalSuccess successful, $totalFailed failed");
+        $this->log('debug', "Completed Mailchimp to CRM synchronization: $totalProcessed processed, $totalSuccess successful, $totalFailed failed");
 
         return [
             'processed' => $totalProcessed,
@@ -229,6 +227,11 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
      */
     private function addCustomMapping(array $crmData, array $member): array
     {
+        foreach ($crmData as $key => $value) {
+            if (($value[0]['mode'] ?? null) === 'replace') {
+                $crmData[$key][0]['mode'] = 'replaceEmpty';
+            }
+        }
         $crmData['entryChannel'] = [
             'value' => 'Mailchimp import ' . date('Y-m-d H:i:s'),
             'mode' => 'replaceEmpty'

@@ -76,7 +76,7 @@ class Config
             throw new ConfigException("Missing 'mailchimp' section.");
         }
 
-        if ($config['mailchimpToCrm']) {
+        if (isset($config['mailchimpToCrm'])) {
             $this->mailchimpToCrm = $config['mailchimpToCrm'];
             $this->mailchimpToCrm['isUpsertToCrmEnabled'] = true;
         } else {

@@ -23,6 +23,7 @@ class Sync extends Command
                             {config : The name of the config file to use.}
                             {--limit=100 : How may records should be synchronized at a time.}
                             {--offset=0 : How many records should be skipped. Usually used in combination with --limit.}
+                            {--max=0 : How many records should be synchronized in total.}
                             {--all : Ignore revision and sync all records, not just changes.}
                             {--force : Ignore locks of previously started (running or dead) sync processes.}';
 
@@ -75,7 +76,7 @@ class Sync extends Command
     private function syncToCrm()
     {
         $limit = $this->option('limit');
-        $offset = $this->option('offset');
+        $max = $this->option('max');
 
         if (!is_numeric($limit) || (int)$limit <= 0) {
             $this->error('The limit option must pass an integer > 0.');
@@ -83,8 +84,8 @@ class Sync extends Command
             return 1;
         }
 
-        if (!is_numeric($offset) || (int)$offset < 0) {
-            $this->error('The offset option must pass an integer >= 0.');
+        if (!is_numeric($max) || (int)$max < 0) {
+            $this->error('The max option must pass an integer >= 0.');
 
             return 1;
         }
@@ -93,7 +94,7 @@ class Sync extends Command
             $sync = new MailchimpToCrmCronSynchronizer($this->argument('config'));
 
             $this->info('Starting Mailchimp to CRM synchronization...');
-            $result = $sync->syncAll((int)$limit, (int)$offset);
+            $result = $sync->syncAll((int)$limit, (int)$max);
             $this->info("Synchronization completed: {$result['processed']} processed, {$result['success']} successful, {$result['failed']} failed");
 
             return 0;
