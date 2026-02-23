@@ -46,6 +46,9 @@ class MailchimpToCrmWebhookSynchronizer extends MailchimpToCrmSynchronizer
 
         $this->logWebhook('debug', $callType, $mailchimpId, "Sync single record from Mailchimp to CRM.");
 
+        $crmId = null;
+        $crmData = [];
+
         switch ($callType) {
             case self::MC_SUBSCRIBE:
                 if (!$this->config->getIgnoreSubscribeThroughMailchimp()) {
@@ -121,6 +124,11 @@ class MailchimpToCrmWebhookSynchronizer extends MailchimpToCrmSynchronizer
             default:
                 $this->logWebhook('error', $callType, $mailchimpId, __METHOD__ . " was called with an undefined webhook event.");
                 return;
+        }
+
+        if (empty($crmId)) {
+            $this->logWebhook('info', $callType, $mailchimpId, "Cannot update member: CRM ID is missing.");
+            return;
         }
 
         try {

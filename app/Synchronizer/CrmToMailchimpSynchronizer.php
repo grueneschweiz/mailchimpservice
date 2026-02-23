@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Mail;
 
 class CrmToMailchimpSynchronizer
 {
-    use LogTrait;
+    use LogTrait, NotificationTrait;
     
     private const LOCK_BASE_FOLDER_NAME = 'locks';
     private const MAX_LOCK_TIME = 15 * 60; // 15 minutes
@@ -906,28 +906,6 @@ class CrmToMailchimpSynchronizer
             ->firstOrNew();
         $entry->attempts++;
         $entry->save();
-    }
-    
-    /**
-     * Inform data owner that he should only add contact in the crm not in mailchimp
-     *
-     * @param array $dataOwner
-     * @param array $mcData
-     */
-    private function notifyAdminInvalidEmail(array $mcData)
-    {
-        $dataOwner = $this->config->getDataOwner();
-        
-        $mailData = new \stdClass();
-        $mailData->dataOwnerName = $dataOwner['name'];
-        $mailData->contactFirstName = $mcData['merge_fields']['FNAME']; // todo: check if we cant get the field keys dynamically
-        $mailData->contactLastName = $mcData['merge_fields']['LNAME']; // todo: dito
-        $mailData->contactEmail = $mcData['email_address'];
-        $mailData->adminEmail = env('ADMIN_EMAIL');
-        $mailData->configName = $this->configName;
-        
-        Mail::to($dataOwner['email'])
-            ->send(new InvalidEmailNotification($mailData));
     }
     
     /**

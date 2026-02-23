@@ -5,9 +5,19 @@ namespace App\Synchronizer;
 use App\Synchronizer\Mapper\Mapper;
 use App\Http\MailChimpClient;
 use App\Synchronizer\Filter;
+use App\Exceptions\FakeEmailException;
+use App\Exceptions\InvalidEmailException;
+use App\Exceptions\AlreadyInListException;
+use App\Exceptions\CleanedEmailException;
+use App\Exceptions\UnsubscribedEmailException;
+use App\Exceptions\ArchivedException;
+use App\Exceptions\EmailComplianceException;
+use App\Exceptions\MailchimpTooManySubscriptionsException;
+use Illuminate\Support\Facades\Log;
 
 class WebsiteToMailchimpSynchronizer
 {
+    use NotificationTrait;
     /**
      * @var Config
      */
@@ -69,6 +79,7 @@ class WebsiteToMailchimpSynchronizer
      * @throws \App\Exceptions\MergeFieldException
      * @throws \App\Exceptions\MailchimpTooManySubscriptionsException
      * @throws \App\Exceptions\ArchivedException
+     * @throws \App\Exceptions\CleanedEmailException
      */
     public function syncSingle(array $websiteData)
     {
@@ -99,7 +110,34 @@ class WebsiteToMailchimpSynchronizer
         $mailchimpData['status'] = 'subscribed';
 
         // Add the subscriber to Mailchimp
-        $response = $this->mailchimpClient->putSubscriber($mailchimpData);
+        try {
+            $response = $this->mailchimpClient->putSubscriber($mailchimpData);
+        } catch (AlreadyInListException $e) {
+            Log::debug("Subscriber already in list: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (InvalidEmailException $e) {
+            Log::info("Invalid email address: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (FakeEmailException $e) {
+            $this->notifyAdminInvalidEmail($mailchimpData);
+            Log::info("Fake or invalid email detected: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (CleanedEmailException $e) {
+            Log::info("Email marked as cleaned (bounced): {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (UnsubscribedEmailException $e) {
+            Log::info("Email previously unsubscribed: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (ArchivedException $e) {
+            Log::info("Email is archived: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (EmailComplianceException $e) {
+            Log::info("Email compliance issue: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        } catch (MailchimpTooManySubscriptionsException $e) {
+            Log::info("Too many subscriptions from email: {$mailchimpData['email_address']}");
+            return ['status' => 'success'];
+        }
 
         // Add tags to new subscriber
         $tags = [$this->config->getNewTag()];
