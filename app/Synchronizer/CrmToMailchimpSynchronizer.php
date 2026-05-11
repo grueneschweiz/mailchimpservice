@@ -318,9 +318,26 @@ class CrmToMailchimpSynchronizer
         try {
             $latestRev = $this->getOpenRevision();
             
-            $this->log('info', "Resuming revision {$latestRev->revision_id}");
+            // Don't resume revisions older than MAX_REVISION_AGE_HOURS - they're stale
+            // Stale revisions can block new changes from being synced because
+            // records already synced in the old revision will be skipped even if they changed again
+            // Use longer timeout for full syncs since they can take days to complete
+            $maxRevisionAge = $latestRev->full_sync 
+                ? (int)env('MAX_FULL_SYNC_REVISION_AGE_HOURS', 240)
+                : (int)env('MAX_REVISION_AGE_HOURS', 48);
             
-            return $latestRev;
+            $revisionAge = now()->diffInHours($latestRev->created_at);
+            $syncType = $latestRev->full_sync ? 'full' : 'incremental';
+            
+            if ($revisionAge > $maxRevisionAge) {
+                $this->log('warning', "Found stale open {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h). Closing and starting fresh.");
+                $latestRev->sync_successful = false; // Mark as failed, not successful
+                $latestRev->save();
+                // Fall through to create new revision
+            } else {
+                $this->log('info', "Resuming {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h)");
+                return $latestRev;
+            }
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // we don't have an open revision so there is nothing to resume
         }
