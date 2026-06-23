@@ -145,43 +145,44 @@ class CrmToMailchimpSynchronizer
             return;
         }
     
-        // get revision id of last successful sync (or -1 if no successful revision in the last X days)
-        $latestSuccessfulSyncRevision = $this->getLatestSuccessfullSyncRevision();
-        $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
-        if (!$latestSuccessfulSyncRevision) {
-            $revId = -1;
-            $log = 'No successful revision found.';
-        } elseif ($latestSuccessfulSyncRevision->created_at < $max_revision_age) {
-            $revId = -1;
-            $log = "Last successful revision started {$latestSuccessfulSyncRevision->created_at->diffForHumans()}.";
-        } else {
-            $revId = $latestSuccessfulSyncRevision->revision_id;
-            $log = "Last successful sync started {$latestSuccessfulSyncRevision->created_at->diffForHumans()} revision id: $revId.";
-        }
-    
-        // sync all records instead of changes if all flag is set
-        if ($all) {
-            $revId = -1;
-            $log = 'Force sync all records regardless of changes.';
-        }
-    
+        $revId = -1;
+        
         if (0 === $offset) {
             $this->log('info', 'Starting to sync from crm into mailchimp.');
     
-            // get latest revision id from webling and store it in the local database
-            $currentRevision = $this->openNewRevision(-1 === $revId);
-    
-            if (-1 === $revId) {
-                $log .= ' Doing full sync.';
-            } elseif ($currentRevision->full_sync) {
-                // resumption of full sync
+            // First, try to resume an existing open revision
+            $currentRevision = $this->openNewRevision($all);
+            
+            // Determine revId and log message based on the revision we're working with
+            if ($currentRevision->full_sync) {
+                // Resuming or starting a full sync
                 $revId = -1;
-                $log = 'Resuming full sync.';
+                $wasResumed = $currentRevision->wasRecentlyCreated === false;
+                $log = $wasResumed ? 'Resuming full sync.' : 'Starting full sync.';
             } else {
-                $log .= ' Synchronizing changes only.';
+                // Incremental sync - check if we should use the last successful revision
+                $latestSuccessfulSyncRevision = $this->getLatestSuccessfullSyncRevision();
+                $max_revision_age = date_create_immutable(self::MAX_ONGOING_REVISION_AGE_BEFORE_FULL_SYNC);
+                
+                if (!$latestSuccessfulSyncRevision) {
+                    $revId = -1;
+                    $log = 'No successful revision found. Doing full sync.';
+                } elseif ($latestSuccessfulSyncRevision->created_at < $max_revision_age) {
+                    $revId = -1;
+                    $log = "Last successful revision started {$latestSuccessfulSyncRevision->created_at->diffForHumans()}. Doing full sync.";
+                } else {
+                    $revId = $latestSuccessfulSyncRevision->revision_id;
+                    $log = "Last successful sync started {$latestSuccessfulSyncRevision->created_at->diffForHumans()} revision id: $revId. Synchronizing changes only.";
+                }
             }
     
             $this->log('info', $log);
+            
+            // Calculate starting offset from already synced records
+            $offset = $this->getResumeOffset();
+            if ($offset > 0) {
+                $this->log('info', "Resuming from offset $offset based on $offset already synced records.");
+            }
         }
         
         while (true) {
@@ -318,25 +319,34 @@ class CrmToMailchimpSynchronizer
         try {
             $latestRev = $this->getOpenRevision();
             
-            // Don't resume revisions older than MAX_REVISION_AGE_HOURS - they're stale
-            // Stale revisions can block new changes from being synced because
-            // records already synced in the old revision will be skipped even if they changed again
-            // Use longer timeout for full syncs since they can take days to complete
-            $maxRevisionAge = $latestRev->full_sync 
-                ? (int)env('MAX_FULL_SYNC_REVISION_AGE_HOURS', 240)
-                : (int)env('MAX_REVISION_AGE_HOURS', 48);
-            
-            $revisionAge = now()->diffInHours($latestRev->created_at);
-            $syncType = $latestRev->full_sync ? 'full' : 'incremental';
-            
-            if ($revisionAge > $maxRevisionAge) {
-                $this->log('warning', "Found stale open {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h). Closing and starting fresh.");
+            // If --all flag is explicitly set, don't resume - force a fresh full sync
+            if ($all) {
+                $syncType = $latestRev->full_sync ? 'full' : 'incremental';
+                $this->log('info', "--all flag set. Closing existing open {$syncType} sync revision {$latestRev->revision_id} and starting fresh full sync.");
                 $latestRev->sync_successful = false; // Mark as failed, not successful
                 $latestRev->save();
                 // Fall through to create new revision
             } else {
-                $this->log('info', "Resuming {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h)");
-                return $latestRev;
+                // Don't resume revisions older than MAX_REVISION_AGE_HOURS - they're stale
+                // Stale revisions can block new changes from being synced because
+                // records already synced in the old revision will be skipped even if they changed again
+                // Use longer timeout for full syncs since they can take days to complete
+                $maxRevisionAge = $latestRev->full_sync 
+                    ? (int)env('MAX_FULL_SYNC_REVISION_AGE_HOURS', 240)
+                    : (int)env('MAX_REVISION_AGE_HOURS', 48);
+                
+                $revisionAge = now()->diffInHours($latestRev->created_at);
+                $syncType = $latestRev->full_sync ? 'full' : 'incremental';
+                
+                if ($revisionAge > $maxRevisionAge) {
+                    $this->log('warning', "Found stale open {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h). Closing and starting fresh.");
+                    $latestRev->sync_successful = false; // Mark as failed, not successful
+                    $latestRev->save();
+                    // Fall through to create new revision
+                } else {
+                    $this->log('info', "Resuming {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h)");
+                    return $latestRev;
+                }
             }
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // we don't have an open revision so there is nothing to resume
@@ -473,6 +483,17 @@ class CrmToMailchimpSynchronizer
         }
         
         return $this->internalRevisionId;
+    }
+    
+    /**
+     * Calculate the offset to resume from based on already synced records
+     *
+     * @return int The number of records already synced for this revision
+     */
+    private function getResumeOffset(): int
+    {
+        return Sync::where('internal_revision_id', $this->getInternalRevisionId())
+            ->count();
     }
     
     private function logRecord(string $method, string $email, string $message): void
