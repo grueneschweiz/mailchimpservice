@@ -762,6 +762,63 @@ class CrmToMailchimpSynchronizerTest extends TestCase
         $this->assertEquals(0, $count, "Expected 0 log message of level INFO that matches regex: $expectedRegex");
     }
 
+    public function testSyncAllChanges_deletes_stale_open_revision()
+    {
+        $staleRevId = 30;
+        $newRevisionId = 31;
+        
+        DB::insert('INSERT INTO revisions (revision_id, config_name, sync_successful, full_sync, created_at, updated_at) values (?, ?, ?, ?, ?, ?)', [
+            $staleRevId,
+            self::CONFIG_FILE_NAME,
+            false,
+            false,
+            date_create_immutable('-49 hours')->format('Y-m-d H:i:s'),
+            date_create_immutable('-49 hours')->format('Y-m-d H:i:s')
+        ]);
+
+        $staleRevision = Revision::where('revision_id', $staleRevId)->first();
+        DB::insert('INSERT INTO syncs (crm_id, internal_revision_id, created_at, updated_at) values (?, ?, ?, ?)', [
+            123,
+            $staleRevision->id,
+            now()->format('Y-m-d H:i:s'),
+            now()->format('Y-m-d H:i:s')
+        ]);
+        
+        $email = Str::random() . '@mymail.com';
+        $member1 = $this->getMember($email);
+
+        $this->mockCrmResponse([
+            new Response(200, [], json_encode($newRevisionId)),
+            new Response(200, [], json_encode([
+                $member1['id'] => $member1
+            ])),
+            new Response(200, [], json_encode([
+                'status' => 'match',
+                'matches' => [$member1],
+                'ratings' => [$member1['id'] => 0]
+            ])),
+            new Response(200, [], json_encode([])),
+        ]);
+
+        $this->sync->syncAllChanges(1, 0);
+
+        $this->assertDatabaseMissing('revisions', [
+            'revision_id' => $staleRevId,
+            'config_name' => self::CONFIG_FILE_NAME,
+        ]);
+
+        $this->assertDatabaseMissing('syncs', [
+            'crm_id' => 123,
+            'internal_revision_id' => $staleRevision->id,
+        ]);
+
+        $this->assertDatabaseHas('revisions', [
+            'revision_id' => $newRevisionId,
+            'config_name' => self::CONFIG_FILE_NAME,
+            'sync_successful' => true,
+        ]);
+    }
+
     public function testPutSubscriber__email_changed()
     {
         $putSubscriber = new \ReflectionMethod($this->sync, 'putSubscriber');

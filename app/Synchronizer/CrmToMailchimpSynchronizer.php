@@ -339,9 +339,10 @@ class CrmToMailchimpSynchronizer
                 $syncType = $latestRev->full_sync ? 'full' : 'incremental';
                 
                 if ($revisionAge > $maxRevisionAge) {
-                    $this->log('warning', "Found stale open {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h). Closing and starting fresh.");
-                    $latestRev->sync_successful = false; // Mark as failed, not successful
-                    $latestRev->save();
+                    $this->log('warning', "Found stale open {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h). Deleting and starting fresh.");
+                    // Delete associated sync records to avoid orphaned data
+                    Sync::where('internal_revision_id', $latestRev->id)->delete();
+                    $latestRev->delete(); // Delete stale revision so it doesn't become the baseline
                     // Fall through to create new revision
                 } else {
                     $this->log('info', "Resuming {$syncType} sync revision {$latestRev->revision_id} (age: {$revisionAge}h, max: {$maxRevisionAge}h)");
