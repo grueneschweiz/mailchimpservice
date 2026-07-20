@@ -335,7 +335,7 @@ class CrmToMailchimpSynchronizer
                     ? (int)env('MAX_FULL_SYNC_REVISION_AGE_HOURS', 240)
                     : (int)env('MAX_REVISION_AGE_HOURS', 48);
                 
-                $revisionAge = now()->diffInHours($latestRev->created_at);
+                $revisionAge = now()->diffInHours($latestRev->created_at, true);
                 $syncType = $latestRev->full_sync ? 'full' : 'incremental';
                 
                 if ($revisionAge > $maxRevisionAge) {

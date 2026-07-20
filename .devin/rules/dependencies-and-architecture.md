@@ -34,7 +34,7 @@ that repo checked out.
 
 From `composer.json`:
 
-- **laravel/framework** (^10.0) — application framework.
+- **laravel/framework** (^12.0) — application framework.
 - **guzzlehttp/guzzle** (^7.0.1) — HTTP client used by `CrmClient` (Webling Service) and
   `MailChimpClient` (Mailchimp).
 - **drewm/mailchimp-api** (^2.5) — thin wrapper around the Mailchimp Marketing API.
