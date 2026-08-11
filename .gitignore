@@ -24,4 +24,5 @@ Thumbs.db
 /config/*.yml
 !/config/example.com.yml
 .phpunit.result.cache
+.phpunit.cache
 /build/logs
