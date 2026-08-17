@@ -157,7 +157,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
         }
 
         if (!empty($member['merge_fields'][$this->mailchimpKeyOfCrmId])) {
-            $this->log('debug', "Member " . $member['email_address'] . " has a CRM ID. Skipping.");
             return false;
         }
 
@@ -170,7 +169,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
             }
         }
         if (!$hasNewsletter) {
-            $this->log('debug', "Member " . $member['email_address'] . " has no newsletter interests set. Skipping.");
             return false;
         }
 
@@ -185,7 +183,6 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
             }
         }
         if (!$newTagFound) {
-            $this->log('debug', "Member {$member['email_address']} does not have the configured new tag. Skipping.");
             return false;
         }
 
