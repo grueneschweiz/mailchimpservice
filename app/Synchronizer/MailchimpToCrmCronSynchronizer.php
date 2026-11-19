@@ -168,7 +168,7 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
                 break;
             }
         }
-        if (!$hasNewsletter) {
+        if (!$hasNewsletter && !$this->hasRequiredMergeFieldsForSync($member)) {
             return false;
         }
 
@@ -184,6 +184,30 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
         }
         if (!$newTagFound) {
             return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check whether the member has non-empty values for all merge fields configured
+     * in requiredMergeFieldsForSync
+     *
+     * @param array $member The member data from Mailchimp
+     * @return bool
+     */
+    private function hasRequiredMergeFieldsForSync(array $member): bool
+    {
+        $requiredMergeFields = $this->config->getRequiredMergeFieldsForSync();
+        if (empty($requiredMergeFields)) {
+            return false;
+        }
+
+        foreach ($requiredMergeFields as $mailchimpKey) {
+            $value = trim((string) ($member['merge_fields'][$mailchimpKey] ?? ''));
+            if ($value === '') {
+                return false;
+            }
         }
 
         return true;

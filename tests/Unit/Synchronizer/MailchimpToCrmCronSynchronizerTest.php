@@ -538,4 +538,124 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $this->expectException(\App\Exceptions\ConfigException::class);
         new MailchimpToCrmCronSynchronizer('tests/test.no-upsert.yml');
     }
+
+    private function configureRequiredMergeFieldsForSync(array $mergeFields): void
+    {
+        $configReflection = new \ReflectionObject($this->config);
+
+        $mailchimpToCrmProperty = $configReflection->getProperty('mailchimpToCrm');
+        $mailchimpToCrmProperty->setAccessible(true);
+        $mailchimpToCrmConfig = $mailchimpToCrmProperty->getValue($this->config);
+        $mailchimpToCrmConfig['newtag'] = 'New';
+        $mailchimpToCrmConfig['requiredMergeFieldsForSync'] = $mergeFields;
+        $mailchimpToCrmProperty->setValue($this->config, $mailchimpToCrmConfig);
+    }
+
+    public function testFilterSingle_WithAllRequiredMergeFieldsPresent_SkipsInterestCheck()
+    {
+        $this->configureRequiredMergeFieldsForSync(['FNAME', 'LNAME']);
+
+        $filterSingleMethod = new ReflectionMethod($this->sync, 'filterSingle');
+        $filterSingleMethod->setAccessible(true);
+
+        $member = [
+            'email_address' => 'valid@example.com',
+            'merge_fields' => [
+                'FNAME' => 'Test',
+                'LNAME' => 'User',
+                'WEBLINGID' => '',
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+            ],
+            'tags' => [
+                ['name' => 'New'],
+            ],
+        ];
+
+        $result = $filterSingleMethod->invoke($this->sync, $member);
+        $this->assertTrue($result);
+    }
+
+    public function testFilterSingle_WithMissingRequiredMergeField_ReturnsFalseWithoutInterest()
+    {
+        $this->configureRequiredMergeFieldsForSync(['FNAME', 'LNAME']);
+
+        $filterSingleMethod = new ReflectionMethod($this->sync, 'filterSingle');
+        $filterSingleMethod->setAccessible(true);
+
+        $member = [
+            'email_address' => 'incomplete@example.com',
+            'merge_fields' => [
+                'FNAME' => 'Test',
+                'LNAME' => '',
+                'WEBLINGID' => '',
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+            ],
+            'tags' => [
+                ['name' => 'New'],
+            ],
+        ];
+
+        $result = $filterSingleMethod->invoke($this->sync, $member);
+        $this->assertFalse($result);
+    }
+
+    public function testFilterSingle_WithEmptyRequiredMergeFieldsConfig_ReturnsFalseWithoutInterest()
+    {
+        $this->configureRequiredMergeFieldsForSync([]);
+
+        $filterSingleMethod = new ReflectionMethod($this->sync, 'filterSingle');
+        $filterSingleMethod->setAccessible(true);
+
+        $member = [
+            'email_address' => 'no-config@example.com',
+            'merge_fields' => [
+                'FNAME' => 'Test',
+                'LNAME' => 'User',
+                'WEBLINGID' => '',
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+            ],
+            'tags' => [
+                ['name' => 'New'],
+            ],
+        ];
+
+        $result = $filterSingleMethod->invoke($this->sync, $member);
+        $this->assertFalse($result);
+    }
+
+    public function testFilterSingle_WithAllRequiredMergeFieldsButMissingNewTag_ReturnsFalse()
+    {
+        $this->configureRequiredMergeFieldsForSync(['FNAME', 'LNAME']);
+
+        $filterSingleMethod = new ReflectionMethod($this->sync, 'filterSingle');
+        $filterSingleMethod->setAccessible(true);
+
+        $member = [
+            'email_address' => 'no-tag@example.com',
+            'merge_fields' => [
+                'FNAME' => 'Test',
+                'LNAME' => 'User',
+                'WEBLINGID' => '',
+            ],
+            'interests' => [
+                '55f795def4' => false,
+                '1851be732e' => false,
+            ],
+            'tags' => [
+                ['name' => 'Deutsch'],
+            ],
+        ];
+
+        $result = $filterSingleMethod->invoke($this->sync, $member);
+        $this->assertFalse($result);
+    }
 }

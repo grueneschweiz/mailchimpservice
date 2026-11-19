@@ -433,4 +433,23 @@ class Config
 
         return $this->mailchimpToCrm['groupForNewMembers'];
     }
+
+    /**
+     * Return array of Mailchimp merge field keys that, when all are non-empty on a subscriber,
+     * qualify the subscriber for syncing to CRM even without a configured newsletter interest
+     *
+     * @return string[]
+     */
+    public function getRequiredMergeFieldsForSync(): array
+    {
+        if (array_key_exists('requiredMergeFieldsForSync', $this->mailchimpToCrm)) {
+            $config = $this->mailchimpToCrm['requiredMergeFieldsForSync'];
+
+            if (is_array($config)) {
+                return $config;
+            }
+        }
+
+        return [];
+    }
 }

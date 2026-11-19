@@ -96,4 +96,21 @@ class ConfigTest extends TestCase
     {
         $this->assertEqualsCanonicalizing([1234567, 7654321], $this->config->getPrioritizedGroups());
     }
+
+    public function testGetRequiredMergeFieldsForSync_DefaultEmpty(): void
+    {
+        $this->assertEquals([], $this->config->getRequiredMergeFieldsForSync());
+    }
+
+    public function testGetRequiredMergeFieldsForSync_WhenConfigured(): void
+    {
+        $reflection = new \ReflectionObject($this->config);
+        $prop = $reflection->getProperty('mailchimpToCrm');
+        $prop->setAccessible(true);
+        $mailchimpToCrm = $prop->getValue($this->config);
+        $mailchimpToCrm['requiredMergeFieldsForSync'] = ['FNAME', 'LNAME'];
+        $prop->setValue($this->config, $mailchimpToCrm);
+
+        $this->assertEquals(['FNAME', 'LNAME'], $this->config->getRequiredMergeFieldsForSync());
+    }
 }
