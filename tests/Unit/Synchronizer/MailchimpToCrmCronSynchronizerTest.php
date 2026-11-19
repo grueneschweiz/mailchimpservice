@@ -658,4 +658,59 @@ class MailchimpToCrmCronSynchronizerTest extends TestCase
         $result = $filterSingleMethod->invoke($this->sync, $member);
         $this->assertFalse($result);
     }
+
+    public function testAddCustomMapping_AppendsNonSystemTagsToEntryChannel()
+    {
+        $configReflection = new \ReflectionObject($this->config);
+        $mailchimpToCrmProperty = $configReflection->getProperty('mailchimpToCrm');
+        $mailchimpToCrmProperty->setAccessible(true);
+        $mailchimpToCrmConfig = $mailchimpToCrmProperty->getValue($this->config);
+        $mailchimpToCrmConfig['newtag'] = 'New';
+        $mailchimpToCrmProperty->setValue($this->config, $mailchimpToCrmConfig);
+
+        $addCustomMappingMethod = new ReflectionMethod($this->sync, 'addCustomMapping');
+        $addCustomMappingMethod->setAccessible(true);
+
+        $member = [
+            'email_address' => 'tags@example.com',
+            'tags' => [
+                ['name' => 'New'],
+                ['name' => 'Deutsch'],
+                ['name' => 'Campaign 2026'],
+                ['name' => 'Petition XYZ'],
+            ],
+        ];
+
+        $result = $addCustomMappingMethod->invoke($this->sync, [], $member);
+
+        $this->assertEquals('replaceEmpty', $result['entryChannel']['mode']);
+        $this->assertMatchesRegularExpression(
+            '/^Mailchimp import \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \(Campaign 2026, Petition XYZ\)$/',
+            $result['entryChannel']['value']
+        );
+    }
+
+    public function testAddCustomMapping_PreservesNonEmptyMappedEntryChannel()
+    {
+        $addCustomMappingMethod = new ReflectionMethod($this->sync, 'addCustomMapping');
+        $addCustomMappingMethod->setAccessible(true);
+
+        $crmData = [
+            'entryChannel' => [
+                ['value' => 'Custom Acquisition Source', 'mode' => 'replace'],
+            ],
+        ];
+        $member = [
+            'email_address' => 'custom@example.com',
+            'tags' => [
+                ['name' => 'New'],
+                ['name' => 'Campaign 2026'],
+            ],
+        ];
+
+        $result = $addCustomMappingMethod->invoke($this->sync, $crmData, $member);
+
+        $this->assertEquals('Custom Acquisition Source', $result['entryChannel'][0]['value']);
+        $this->assertEquals('replaceEmpty', $result['entryChannel'][0]['mode']);
+    }
 }

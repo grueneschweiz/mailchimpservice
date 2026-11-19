@@ -253,10 +253,12 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
                 $crmData[$key][0]['mode'] = 'replaceEmpty';
             }
         }
-        $crmData['entryChannel'] = [
-            'value' => 'Mailchimp import ' . date('Y-m-d H:i:s'),
-            'mode' => 'replaceEmpty'
-        ];
+        if (empty($crmData['entryChannel'][0]['value']) && empty($crmData['entryChannel']['value'])) {
+            $crmData['entryChannel'] = [
+                'value' => $this->buildEntryChannelValue($member),
+                'mode' => 'replaceEmpty'
+            ];
+        }
         $crmData['groups'] = [
             'value' => (string) $this->groupForNewMembers,
             'mode' => 'append'
@@ -374,5 +376,33 @@ class MailchimpToCrmCronSynchronizer extends MailchimpToCrmSynchronizer
         }
 
         return null;
+    }
+
+    /**
+     * Build the entryChannel value including non-system subscriber tags
+     *
+     * @param array $member The member data from Mailchimp
+     * @return string
+     */
+    private function buildEntryChannelValue(array $member): string
+    {
+        $baseValue = 'Mailchimp import ' . date('Y-m-d H:i:s');
+        $tagsToExclude = array_merge([$this->config->getNewTag()], $this->languageTags);
+        $relevantTags = [];
+
+        if (isset($member['tags']) && is_array($member['tags'])) {
+            foreach ($member['tags'] as $tag) {
+                $tagName = isset($tag['name']) ? trim((string) $tag['name']) : '';
+                if ($tagName !== '' && !in_array($tagName, $tagsToExclude, true)) {
+                    $relevantTags[] = $tagName;
+                }
+            }
+        }
+
+        if (!empty($relevantTags)) {
+            return $baseValue . ' (' . implode(', ', $relevantTags) . ')';
+        }
+
+        return $baseValue;
     }
 }
